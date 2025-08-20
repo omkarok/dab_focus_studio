@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { sortByPriority } from "@/features/enhancedTaskManagement";
+import { computeStats } from "@/features/analyticsReporting";
 import {
   Download,
   Upload,
@@ -414,8 +416,12 @@ export default function FocusStudioStarter() {
   const byCol = useMemo(() => {
     const map: Record<ColumnKey, Task[]> = { now: [], next: [], later: [], backlog: [], done: [] };
     tasks.forEach((t) => map[t.status].push(t));
+    (Object.keys(map) as ColumnKey[]).forEach((col) => {
+      map[col] = sortByPriority(map[col]);
+    });
     return map;
   }, [tasks]);
+  const stats = useMemo(() => computeStats(tasks), [tasks]);
 
   const completedToday = useMemo(() => tasks.filter((t) => t.completed && isToday(t.completedAt)).length, [tasks]);
 
@@ -810,7 +816,7 @@ export default function FocusStudioStarter() {
       </main>
 
       <footer className="max-w-7xl mx-auto px-4 py-10 text-center text-xs text-muted-foreground">
-        Built with ❤️ • MIT License • Starter UI for remixing
+        Built with ❤️ • {stats.completed}/{stats.total} tasks completed • MIT License • Starter UI for remixing
       </footer>
     </div>
   );
