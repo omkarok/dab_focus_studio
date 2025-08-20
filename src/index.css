@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 255 255 255;
+  --foreground: 10 10 10;
+}
+.dark {
+  --background: 10 10 10;
+  --foreground: 245 245 245;
+}
