@@ -8,10 +8,13 @@ npm i
 npm run dev
 ```
 
+Optionally set `VITE_OPENAI_API_KEY` to enable AI-powered subtasks.
+
 ## Features
 - Now / Next / Later / Backlog / Done
 - Focus Mode with Pomodoro (25/5 or 50/10)
 - Templates (import / export)
+- AI-powered subtask generation (requires `VITE_OPENAI_API_KEY`)
 - LocalStorage persistence
 - MIT License
 
