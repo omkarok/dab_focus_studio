@@ -1,12 +1,85 @@
-// Placeholder for AI command center integration.
-// TODO: connect to an AI service to assist with task generation.
+// Basic AI command center integration using OpenAI's API.
+// Set `VITE_OPENAI_API_KEY` to enable these helpers.
 
-export async function generateSubtasks(task: any): Promise<string[]> {
-  // In the future this will call an AI API with task context.
-  return [];
+import type { Task } from "@/FocusStudioStarter";
+
+type TaskLike = Pick<Task, "title" | "notes">;
+
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+
+const API_KEY = (import.meta as any).env?.VITE_OPENAI_API_KEY as string | undefined;
+
+export async function generateSubtasks(task: TaskLike): Promise<string[]> {
+  if (!API_KEY) {
+    console.warn("VITE_OPENAI_API_KEY not set; returning no subtasks.");
+    return [];
+  }
+
+  const prompt = `Break down the following task into actionable subtasks. Reply with each subtask on its own line.\n\nTitle: ${task.title}\nNotes: ${task.notes ?? ""}`;
+
+  try {
+    const res = await fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("AI request failed", await res.text());
+      return [];
+    }
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content ?? "";
+    return text
+      .split(/\n+/)
+      .map((l: string) => l.replace(/^[-*]\s*/, "").trim())
+      .filter(Boolean);
+  } catch (err) {
+    console.error("AI request error", err);
+    return [];
+  }
 }
 
-export async function summarizeTask(task: any): Promise<string> {
-  // Returns a short summary via AI; currently returns title if present.
-  return task?.title ?? "";
+export async function summarizeTask(task: TaskLike): Promise<string> {
+  if (!API_KEY) {
+    console.warn("VITE_OPENAI_API_KEY not set; returning title.");
+    return task.title;
+  }
+
+  const prompt = `Provide a short summary for the following task.\n\nTitle: ${task.title}\nNotes: ${task.notes ?? ""}`;
+
+  try {
+    const res = await fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+        max_tokens: 50,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("AI request failed", await res.text());
+      return task.title;
+    }
+
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.trim() || task.title;
+  } catch (err) {
+    console.error("AI request error", err);
+    return task.title;
+  }
 }
