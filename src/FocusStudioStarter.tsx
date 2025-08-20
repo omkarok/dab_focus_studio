@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { sortByPriority } from "@/features/enhancedTaskManagement";
 import { computeStats } from "@/features/analyticsReporting";
+import { generateSubtasks } from "@/features/aiCommandCenter";
 import {
   Download,
   Upload,
@@ -42,6 +43,7 @@ import {
   EyeOff,
   Settings2,
   Flame,
+  Sparkles,
 } from "lucide-react";
 
 // ------------------------------------------------------------
@@ -321,10 +323,11 @@ const PriorityBadge = ({ p }: { p: Priority }) => {
 };
 
 // Task card (compact)
-function TaskCard({ task, onUpdate, onMove }: {
+function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
   task: Task;
   onUpdate: (patch: Partial<Task>) => void;
   onMove: (to: ColumnKey) => void;
+  onGenerateSubtasks?: (task: Task) => void;
 }) {
   return (
     <motion.div layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
@@ -375,6 +378,15 @@ function TaskCard({ task, onUpdate, onMove }: {
                 <Button variant="ghost" size="sm" onClick={() => onUpdate({})}>
                   <Settings2 className="h-4 w-4 mr-1" /> Edit
                 </Button>
+                {onGenerateSubtasks ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onGenerateSubtasks(task)}
+                  >
+                    <Sparkles className="h-4 w-4 mr-1" /> Subtasks
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -409,6 +421,7 @@ export default function FocusStudioStarter() {
   const [activeTemplate, setActiveTemplate] = useState<string>("Blank");
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
+  const [subtaskLoading, setSubtaskLoading] = useState(false);
 
   const timer = usePomodoro("focus");
 
@@ -453,6 +466,23 @@ export default function FocusStudioStarter() {
   const moveTask = (id: string, to: ColumnKey) => updateTask(id, { status: to });
 
   const removeTask = (id: string) => setTasks((x) => x.filter((t) => t.id !== id));
+
+  const generateSubtasksFor = async (task: Task) => {
+    setSubtaskLoading(true);
+    const subs = await generateSubtasks({ title: task.title, notes: task.notes });
+    setSubtaskLoading(false);
+    if (subs.length) {
+      const newTasks = subs.map((title) => ({
+        id: uid(),
+        title,
+        priority: task.priority,
+        status: task.status,
+        createdAt: new Date().toISOString(),
+        completed: false,
+      }));
+      setTasks((prev) => [...prev, ...newTasks]);
+    }
+  };
 
   const applyTemplate = (tplName: string) => {
     const tpl = TEMPLATES.find((t) => t.name === tplName);
@@ -656,35 +686,65 @@ export default function FocusStudioStarter() {
             <Column title="Now">
               <AnimatePresence mode="popLayout">
                 {byCol.now.map((t) => (
-                  <TaskCard key={t.id} task={t} onUpdate={(p) => updateTask(t.id, p)} onMove={(to) => moveTask(t.id, to)} />
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    onUpdate={(p) => updateTask(t.id, p)}
+                    onMove={(to) => moveTask(t.id, to)}
+                    onGenerateSubtasks={generateSubtasksFor}
+                  />
                 ))}
               </AnimatePresence>
             </Column>
             <Column title="Next">
               <AnimatePresence mode="popLayout">
                 {byCol.next.map((t) => (
-                  <TaskCard key={t.id} task={t} onUpdate={(p) => updateTask(t.id, p)} onMove={(to) => moveTask(t.id, to)} />
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    onUpdate={(p) => updateTask(t.id, p)}
+                    onMove={(to) => moveTask(t.id, to)}
+                    onGenerateSubtasks={generateSubtasksFor}
+                  />
                 ))}
               </AnimatePresence>
             </Column>
             <Column title="Later">
               <AnimatePresence mode="popLayout">
                 {byCol.later.map((t) => (
-                  <TaskCard key={t.id} task={t} onUpdate={(p) => updateTask(t.id, p)} onMove={(to) => moveTask(t.id, to)} />
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    onUpdate={(p) => updateTask(t.id, p)}
+                    onMove={(to) => moveTask(t.id, to)}
+                    onGenerateSubtasks={generateSubtasksFor}
+                  />
                 ))}
               </AnimatePresence>
             </Column>
             <Column title="Backlog">
               <AnimatePresence mode="popLayout">
                 {byCol.backlog.map((t) => (
-                  <TaskCard key={t.id} task={t} onUpdate={(p) => updateTask(t.id, p)} onMove={(to) => moveTask(t.id, to)} />
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    onUpdate={(p) => updateTask(t.id, p)}
+                    onMove={(to) => moveTask(t.id, to)}
+                    onGenerateSubtasks={generateSubtasksFor}
+                  />
                 ))}
               </AnimatePresence>
             </Column>
             <Column title="Done">
               <AnimatePresence mode="popLayout">
                 {byCol.done.map((t) => (
-                  <TaskCard key={t.id} task={t} onUpdate={(p) => updateTask(t.id, p)} onMove={(to) => moveTask(t.id, to)} />
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    onUpdate={(p) => updateTask(t.id, p)}
+                    onMove={(to) => moveTask(t.id, to)}
+                    onGenerateSubtasks={generateSubtasksFor}
+                  />
                 ))}
               </AnimatePresence>
             </Column>
@@ -709,12 +769,24 @@ export default function FocusStudioStarter() {
                         <PriorityBadge p={selectedTask.priority} />
                         {selectedTask.estimate ? <Badge variant="outline">~{selectedTask.estimate} pom</Badge> : null}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button size="sm" onClick={() => updateTask(selectedTask.id, { completed: true, completedAt: new Date().toISOString(), status: "done" })}>
                           <CheckCircle2 className="h-4 w-4 mr-1" /> Mark Done
                         </Button>
                         <Button size="sm" variant="secondary" onClick={() => moveTask(selectedTask.id, "next")}>Move to Next</Button>
                         <Button size="sm" variant="ghost" onClick={() => removeTask(selectedTask.id)}>Remove</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => selectedTask && generateSubtasksFor(selectedTask)}
+                          disabled={subtaskLoading}
+                        >
+                          {subtaskLoading ? (
+                            "Generating..."
+                          ) : (
+                            <span className="flex items-center"><Sparkles className="h-4 w-4 mr-1" /> AI Subtasks</span>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   ) : (

@@ -4,6 +4,7 @@ This roadmap tracks major features proposed for the project. Each section lists 
 
 ## AI Command Center
 - [x] Integrate an AI service to generate subtasks and suggestions.
+- [x] Surface subtask generation on the task dashboard.
 - [ ] Allow users to review and edit AI-proposed outcomes.
 
 ## Collaboration & Sync
