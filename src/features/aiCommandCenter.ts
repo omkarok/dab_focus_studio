@@ -83,3 +83,16 @@ export async function summarizeTask(task: TaskLike): Promise<string> {
     return task.title;
   }
 }
+
+/**
+ * Allow callers to review and edit AI-proposed outcomes.
+ * The provided editor callback receives each suggestion and its index
+ * and should return the revised text. This is a groundwork helper for
+ * a future UI where users can tweak AI results before saving.
+ */
+export function reviewAiOutcomes(
+  suggestions: string[],
+  editor: (suggestion: string, index: number) => string,
+): string[] {
+  return suggestions.map((s, i) => editor(s, i));
+}
