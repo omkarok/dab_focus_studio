@@ -14,3 +14,9 @@ npm run dev
 - Templates (import / export)
 - LocalStorage persistence
 - MIT License
+
+## Data & Privacy
+
+All task data is stored locally in your browser by default. Future
+releases will offer optional end-to-end encryption and sanitized export
+tools to help protect personal information.
