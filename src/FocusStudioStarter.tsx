@@ -26,7 +26,14 @@ import { Badge } from "@/components/ui/badge";
 import { sortByPriority } from "@/features/enhancedTaskManagement";
 import { computeStats } from "@/features/analyticsReporting";
 import { generateSubtasks } from "@/features/aiCommandCenter";
-import { DndContext, DragEndEvent, useDroppable } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -46,6 +53,7 @@ import {
   EyeOff,
   Settings2,
   Flame,
+  Sparkles,
 } from "lucide-react";
 import { useTasks } from "@/lib/taskContext";
 import { useTemplates, DEFAULT_COLUMNS } from "@/lib/templateContext";
@@ -329,6 +337,7 @@ export default function FocusStudioStarter() {
   const [notesDraft, setNotesDraft] = useState("");
   const [subtaskLoading, setSubtaskLoading] = useState(false);
 
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const timer = usePomodoro("focus");
 
   // Derived
@@ -596,7 +605,7 @@ export default function FocusStudioStarter() {
         </AnimatePresence>
 
         {/* Board */}
-        <DndContext onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           {!focusMode ? (
             <div className="grid lg:grid-cols-5 md:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-4">
               <Column id="now" title="Now">
