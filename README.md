@@ -8,13 +8,14 @@ npm i
 npm run dev
 ```
 
-Optionally set `VITE_OPENAI_API_KEY` to enable AI-powered subtasks.
+Optionally set `VITE_OPENAI_API_KEY` (and `VITE_OPENAI_MODEL`, default `gpt-4o-mini`) to enable AI-powered subtasks and the planning chatbot.
 
 ## Features
 - Now / Next / Later / Backlog / Done
 - Focus Mode with Pomodoro (25/5 or 50/10)
 - Templates (import / export)
 - AI-powered subtask generation (requires `VITE_OPENAI_API_KEY`)
+- Collapsible planning chatbot with streaming responses
 - LocalStorage persistence
 - MIT License
 
