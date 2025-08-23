@@ -21,7 +21,7 @@ const API_KEY =
 const MODEL =
   ((import.meta as any).env?.VITE_OPENAI_MODEL ??
     (globalThis as any)?.process?.env?.VITE_OPENAI_MODEL ??
-    "gpt-5") as string;
+    "gpt-4.1-mini") as string;
 
 export async function generateSubtasks(task: TaskLike): Promise<string[]> {
   if (!API_KEY) {
