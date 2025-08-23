@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useTasks } from "@/lib/taskContext";
+import { useTemplates } from "@/lib/templateContext";
 import type { ColumnKey, Priority, Task } from "@/FocusStudioStarter";
 
 interface ChatMessage {
@@ -25,6 +26,7 @@ export default function PlanningChatbot() {
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { tasks, setTasks, updateTask } = useTasks();
+  const { templates } = useTemplates();
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
@@ -76,10 +78,13 @@ export default function PlanningChatbot() {
       const taskContext = tasks
         .map((t) => `${t.id}: ${t.title} [${t.priority}] (${t.status})`)
         .join("\n");
+      const templateContext = templates
+        .map((tpl) => `${tpl.name}:\n${tpl.tasks.map((t) => `${t.title} [${t.priority}] (${t.status})`).join("\n")}`)
+        .join("\n\n");
       const systemMessage: ChatMessage = {
         role: "system",
         content:
-          `Current tasks:\n${taskContext}\nUse /move TASK_ID COLUMN, /priority TASK_ID PRIORITY, or /add TITLE | PRIORITY | COLUMN to update the board.`,
+          `Current tasks:\n${taskContext}\n\nTemplates:\n${templateContext}\nUse /move TASK_ID COLUMN, /priority TASK_ID PRIORITY, or /add TITLE | PRIORITY | COLUMN to update the board.`,
       };
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
