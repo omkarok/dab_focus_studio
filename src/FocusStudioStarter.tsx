@@ -26,6 +26,9 @@ import { Badge } from "@/components/ui/badge";
 import { sortByPriority } from "@/features/enhancedTaskManagement";
 import { computeStats } from "@/features/analyticsReporting";
 import { generateSubtasks } from "@/features/aiCommandCenter";
+import { DndContext, DragEndEvent, useDroppable } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Download,
   Upload,
@@ -329,8 +332,22 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
   onMove: (to: ColumnKey) => void;
   onGenerateSubtasks?: (task: Task) => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
   return (
-    <motion.div layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      {...attributes}
+      {...listeners}
+    >
       <Card className="mb-2 shadow-sm border-muted/40">
         <CardContent className="p-3 space-y-2">
           <div className="flex items-start gap-2">
@@ -345,7 +362,7 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
             </button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h4 className={`font-medium truncate ${task.completed ? "line-through text-muted-foreground" : ""}`}>{task.title}</h4>
+                <h4 className={`font-medium break-words ${task.completed ? "line-through text-muted-foreground" : ""}`}>{task.title}</h4>
                 <PriorityBadge p={task.priority} />
                 {task.estimate ? (
                   <span className="text-xs text-muted-foreground">⏱️ {task.estimate} pom</span>
@@ -397,9 +414,10 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
 }
 
 // Column wrapper
-function Column({ title, children }: { title: string; children: React.ReactNode }) {
+function Column({ id, title, children }: { id: ColumnKey; title: string; children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({ id });
   return (
-    <div className="flex-1 min-w-[260px]">
+    <div ref={setNodeRef} className="flex-1 min-w-[260px]">
       <h3 className="text-sm font-semibold tracking-wide text-muted-foreground mb-2 uppercase">{title}</h3>
       <div className="rounded-2xl border bg-card p-2">
         {children}
@@ -442,6 +460,17 @@ export default function FocusStudioStarter() {
     document.documentElement.classList.remove("light", "dark");
     document.documentElement.classList.add(theme === "dark" ? "dark" : "light");
   }, [theme]);
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over) return;
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    const from = tasks.find((t) => t.id === activeId)?.status;
+    const overTask = tasks.find((t) => t.id === overId);
+    const to: ColumnKey | undefined = overTask ? overTask.status : (overId as ColumnKey);
+    if (!from || !to || from === to) return;
+    setTasks((prev) => prev.map((t) => (t.id === activeId ? { ...t, status: to } : t)));
+  };
 
   const addTask = () => {
     if (!quickTitle.trim()) return;
@@ -681,80 +710,91 @@ export default function FocusStudioStarter() {
         </AnimatePresence>
 
         {/* Board */}
-        {!focusMode ? (
-          <div className="grid lg:grid-cols-5 md:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-4">
-            <Column title="Now">
-              <AnimatePresence mode="popLayout">
-                {byCol.now.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onUpdate={(p) => updateTask(t.id, p)}
-                    onMove={(to) => moveTask(t.id, to)}
-                    onGenerateSubtasks={generateSubtasksFor}
-                  />
-                ))}
-              </AnimatePresence>
-            </Column>
-            <Column title="Next">
-              <AnimatePresence mode="popLayout">
-                {byCol.next.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onUpdate={(p) => updateTask(t.id, p)}
-                    onMove={(to) => moveTask(t.id, to)}
-                    onGenerateSubtasks={generateSubtasksFor}
-                  />
-                ))}
-              </AnimatePresence>
-            </Column>
-            <Column title="Later">
-              <AnimatePresence mode="popLayout">
-                {byCol.later.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onUpdate={(p) => updateTask(t.id, p)}
-                    onMove={(to) => moveTask(t.id, to)}
-                    onGenerateSubtasks={generateSubtasksFor}
-                  />
-                ))}
-              </AnimatePresence>
-            </Column>
-            <Column title="Backlog">
-              <AnimatePresence mode="popLayout">
-                {byCol.backlog.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onUpdate={(p) => updateTask(t.id, p)}
-                    onMove={(to) => moveTask(t.id, to)}
-                    onGenerateSubtasks={generateSubtasksFor}
-                  />
-                ))}
-              </AnimatePresence>
-            </Column>
-            <Column title="Done">
-              <AnimatePresence mode="popLayout">
-                {byCol.done.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onUpdate={(p) => updateTask(t.id, p)}
-                    onMove={(to) => moveTask(t.id, to)}
-                    onGenerateSubtasks={generateSubtasksFor}
-                  />
-                ))}
-              </AnimatePresence>
-            </Column>
-          </div>
-        ) : (
-          <div className="grid lg:grid-cols-5 md:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-4">
-            <div className="lg:col-span-3 md:col-span-2">
-              <Card className="border-muted/40">
-                <CardHeader>
-                  <CardTitle className="text-base">Now</CardTitle>
+        <DndContext onDragEnd={handleDragEnd}>
+          {!focusMode ? (
+            <div className="grid lg:grid-cols-5 md:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-4">
+              <Column id="now" title="Now">
+                <SortableContext id="now" items={byCol.now.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  <AnimatePresence mode="popLayout">
+                    {byCol.now.map((t) => (
+                      <TaskCard
+                        key={t.id}
+                        task={t}
+                        onUpdate={(p) => updateTask(t.id, p)}
+                        onMove={(to) => moveTask(t.id, to)}
+                        onGenerateSubtasks={generateSubtasksFor}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </SortableContext>
+              </Column>
+              <Column id="next" title="Next">
+                <SortableContext id="next" items={byCol.next.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  <AnimatePresence mode="popLayout">
+                    {byCol.next.map((t) => (
+                      <TaskCard
+                        key={t.id}
+                        task={t}
+                        onUpdate={(p) => updateTask(t.id, p)}
+                        onMove={(to) => moveTask(t.id, to)}
+                        onGenerateSubtasks={generateSubtasksFor}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </SortableContext>
+              </Column>
+              <Column id="later" title="Later">
+                <SortableContext id="later" items={byCol.later.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  <AnimatePresence mode="popLayout">
+                    {byCol.later.map((t) => (
+                      <TaskCard
+                        key={t.id}
+                        task={t}
+                        onUpdate={(p) => updateTask(t.id, p)}
+                        onMove={(to) => moveTask(t.id, to)}
+                        onGenerateSubtasks={generateSubtasksFor}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </SortableContext>
+              </Column>
+              <Column id="backlog" title="Backlog">
+                <SortableContext id="backlog" items={byCol.backlog.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  <AnimatePresence mode="popLayout">
+                    {byCol.backlog.map((t) => (
+                      <TaskCard
+                        key={t.id}
+                        task={t}
+                        onUpdate={(p) => updateTask(t.id, p)}
+                        onMove={(to) => moveTask(t.id, to)}
+                        onGenerateSubtasks={generateSubtasksFor}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </SortableContext>
+              </Column>
+              <Column id="done" title="Done">
+                <SortableContext id="done" items={byCol.done.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  <AnimatePresence mode="popLayout">
+                    {byCol.done.map((t) => (
+                      <TaskCard
+                        key={t.id}
+                        task={t}
+                        onUpdate={(p) => updateTask(t.id, p)}
+                        onMove={(to) => moveTask(t.id, to)}
+                        onGenerateSubtasks={generateSubtasksFor}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </SortableContext>
+              </Column>
+            </div>
+          ) : (
+            <div className="grid lg:grid-cols-5 md:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-4">
+              <div className="lg:col-span-3 md:col-span-2">
+                <Card className="border-muted/40">
+                  <CardHeader>
+                    <CardTitle className="text-base">Now</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {selectedTask ? (
@@ -843,7 +883,8 @@ export default function FocusStudioStarter() {
               </Card>
             </div>
           </div>
-        )}
+          )}
+        </DndContext>
 
         {/* Notes editor dialog for selected task */}
         <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
