@@ -18,6 +18,11 @@ const API_KEY =
     | string
     | undefined;
 
+const MODEL =
+  ((import.meta as any).env?.VITE_OPENAI_MODEL ??
+    (globalThis as any)?.process?.env?.VITE_OPENAI_MODEL ??
+    "gpt-5") as string;
+
 export async function generateSubtasks(task: TaskLike): Promise<string[]> {
   if (!API_KEY) {
     console.warn("VITE_OPENAI_API_KEY not set; returning no subtasks.");
@@ -34,7 +39,7 @@ export async function generateSubtasks(task: TaskLike): Promise<string[]> {
         Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
       }),
@@ -73,7 +78,7 @@ export async function summarizeTask(task: TaskLike): Promise<string> {
         Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
         max_tokens: 50,

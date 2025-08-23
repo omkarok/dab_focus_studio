@@ -88,7 +88,7 @@ export default function PlanningChatbot() {
           Authorization: `Bearer ${(import.meta as any).env?.VITE_OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: (import.meta as any).env?.VITE_OPENAI_MODEL || "gpt-4o-mini",
+          model: (import.meta as any).env?.VITE_OPENAI_MODEL || "gpt-5",
           stream: true,
           messages: [systemMessage, ...messages, userMessage].map((m) => ({
             role: m.role,
