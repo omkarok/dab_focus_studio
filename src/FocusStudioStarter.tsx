@@ -48,6 +48,7 @@ import {
   Flame,
   Sparkles,
 } from "lucide-react";
+import { useTasks } from "@/lib/taskContext";
 
 // ------------------------------------------------------------
 // Focus Studio Starter: Bare-bones, remixable UI/UX scaffold
@@ -225,7 +226,6 @@ const TEMPLATES: Template[] = [
 ];
 
 // Local storage helpers
-const LS_KEY = "focus_studio_state_v1";
 const THEME_KEY = "focus_studio_theme_v1";
 
 function useLocalStorage<T>(key: string, initial: T) {
@@ -427,7 +427,7 @@ function Column({ id, title, children }: { id: ColumnKey; title: string; childre
 }
 
 export default function FocusStudioStarter() {
-  const [tasks, setTasks] = useLocalStorage<Task[]>(LS_KEY, []);
+  const { tasks, setTasks, updateTask } = useTasks();
   const [theme, setTheme] = useLocalStorage<"light" | "dark" | "comfort">(THEME_KEY, "comfort");
   const [focusMode, setFocusMode] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -486,10 +486,6 @@ export default function FocusStudioStarter() {
     };
     setTasks((x) => [t, ...x]);
     setQuickTitle("");
-  };
-
-  const updateTask = (id: string, patch: Partial<Task>) => {
-    setTasks((x) => x.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   };
 
   const moveTask = (id: string, to: ColumnKey) => updateTask(id, { status: to });
