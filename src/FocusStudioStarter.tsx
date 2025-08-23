@@ -195,11 +195,12 @@ const PriorityBadge = ({ p }: { p: Priority }) => {
 };
 
 // Task card (compact)
-function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
+function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks, onSelect }: {
   task: Task;
   onUpdate: (patch: Partial<Task>) => void;
   onMove: (to: ColumnKey) => void;
   onGenerateSubtasks?: (task: Task) => void;
+  onSelect?: (taskId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
   const style = {
@@ -216,15 +217,21 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
       exit={{ opacity: 0, y: -6 }}
       {...attributes}
       {...listeners}
+      onClick={() => onSelect?.(task.id)}
     >
       <Card className="mb-2 shadow-sm border-muted/40">
         <CardContent className="p-3 space-y-2">
           <div className="flex items-start gap-2">
             <button
               aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
-              onClick={() =>
-                onUpdate({ completed: !task.completed, completedAt: !task.completed ? new Date().toISOString() : null, status: !task.completed ? "done" : task.status })
-              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdate({
+                  completed: !task.completed,
+                  completedAt: !task.completed ? new Date().toISOString() : null,
+                  status: !task.completed ? "done" : task.status,
+                });
+              }}
               className={`mt-0.5 rounded-full border w-5 h-5 flex items-center justify-center ${task.completed ? "bg-emerald-500 text-white border-emerald-500" : "border-muted-foreground/30"}`}
             >
               {task.completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
@@ -250,7 +257,7 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <Select onValueChange={(v) => onMove(v as ColumnKey)}>
-                  <SelectTrigger className="h-8 w-[140px]">
+                  <SelectTrigger className="h-8 w-[140px]" onClick={(e) => e.stopPropagation()}>
                     <SelectValue placeholder="Move to…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -261,14 +268,24 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
                     <SelectItem value="done">Done</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="sm" onClick={() => onUpdate({})}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpdate({});
+                  }}
+                >
                   <Settings2 className="h-4 w-4 mr-1" /> Edit
                 </Button>
                 {onGenerateSubtasks ? (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onGenerateSubtasks(task)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onGenerateSubtasks(task);
+                    }}
                   >
                     Subtasks
                   </Button>
@@ -301,6 +318,7 @@ export default function FocusStudioStarter() {
   const [theme, setTheme] = useLocalStorage<"light" | "dark" | "comfort">(THEME_KEY, "comfort");
   const [focusMode, setFocusMode] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickPriority, setQuickPriority] = useState<Priority>("P1");
   const [quickTarget, setQuickTarget] = useState<ColumnKey>("now");
@@ -591,6 +609,10 @@ export default function FocusStudioStarter() {
                         onUpdate={(p) => updateTask(t.id, p)}
                         onMove={(to) => moveTask(t.id, to)}
                         onGenerateSubtasks={generateSubtasksFor}
+                        onSelect={() => {
+                          setSelectedTaskId(t.id);
+                          setTaskDialogOpen(true);
+                        }}
                       />
                     ))}
                   </AnimatePresence>
@@ -606,6 +628,10 @@ export default function FocusStudioStarter() {
                         onUpdate={(p) => updateTask(t.id, p)}
                         onMove={(to) => moveTask(t.id, to)}
                         onGenerateSubtasks={generateSubtasksFor}
+                        onSelect={() => {
+                          setSelectedTaskId(t.id);
+                          setTaskDialogOpen(true);
+                        }}
                       />
                     ))}
                   </AnimatePresence>
@@ -621,6 +647,10 @@ export default function FocusStudioStarter() {
                         onUpdate={(p) => updateTask(t.id, p)}
                         onMove={(to) => moveTask(t.id, to)}
                         onGenerateSubtasks={generateSubtasksFor}
+                        onSelect={() => {
+                          setSelectedTaskId(t.id);
+                          setTaskDialogOpen(true);
+                        }}
                       />
                     ))}
                   </AnimatePresence>
@@ -636,6 +666,10 @@ export default function FocusStudioStarter() {
                         onUpdate={(p) => updateTask(t.id, p)}
                         onMove={(to) => moveTask(t.id, to)}
                         onGenerateSubtasks={generateSubtasksFor}
+                        onSelect={() => {
+                          setSelectedTaskId(t.id);
+                          setTaskDialogOpen(true);
+                        }}
                       />
                     ))}
                   </AnimatePresence>
@@ -651,6 +685,10 @@ export default function FocusStudioStarter() {
                         onUpdate={(p) => updateTask(t.id, p)}
                         onMove={(to) => moveTask(t.id, to)}
                         onGenerateSubtasks={generateSubtasksFor}
+                        onSelect={() => {
+                          setSelectedTaskId(t.id);
+                          setTaskDialogOpen(true);
+                        }}
                       />
                     ))}
                   </AnimatePresence>
@@ -749,6 +787,70 @@ export default function FocusStudioStarter() {
           </div>
           )}
         </DndContext>
+
+        {/* Task view dialog */}
+        <Dialog
+          open={taskDialogOpen}
+          onOpenChange={(o) => {
+            setTaskDialogOpen(o);
+            if (!o) setSelectedTaskId(null);
+          }}
+        >
+          <DialogContent>
+            {selectedTask && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>{selectedTask.title}</DialogTitle>
+                </DialogHeader>
+                {selectedTask.notes ? (
+                  <p className="text-muted-foreground whitespace-pre-wrap">{selectedTask.notes}</p>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setNotesOpen(true);
+                      setNotesDraft(selectedTask.notes || "");
+                    }}
+                  >
+                    Add notes
+                  </Button>
+                )}
+                <div className="flex items-center gap-2 mt-2">
+                  <PriorityBadge p={selectedTask.priority} />
+                  {selectedTask.estimate ? <Badge variant="outline">~{selectedTask.estimate} pom</Badge> : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      updateTask(selectedTask.id, {
+                        completed: true,
+                        completedAt: new Date().toISOString(),
+                        status: "done",
+                      })
+                    }
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-1" /> Mark Done
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => moveTask(selectedTask.id, "next")}>
+                    Move to Next
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => removeTask(selectedTask.id)}>
+                    Remove
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => selectedTask && generateSubtasksFor(selectedTask)}
+                  >
+                    <Sparkles className="h-4 w-4 mr-1" /> Subtasks
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Notes editor dialog for selected task */}
         <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
