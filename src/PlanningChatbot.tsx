@@ -3,11 +3,15 @@ import { MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useTasks } from "@/lib/taskContext";
+import type { ColumnKey, Priority, Task } from "@/FocusStudioStarter";
 
 interface ChatMessage {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
 }
+
+const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 export default function PlanningChatbot() {
   const [open, setOpen] = useState(false);
@@ -20,11 +24,42 @@ export default function PlanningChatbot() {
   ]);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { tasks, setTasks, updateTask } = useTasks();
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [messages, open]);
+
+  function applyCommands(text: string) {
+    const lines = text.split("\n");
+    for (const line of lines) {
+      if (line.startsWith("/move")) {
+        const [, id, column] = line.split(/\s+/);
+        if (id && column) updateTask(id, { status: column as ColumnKey });
+      } else if (line.startsWith("/priority")) {
+        const [, id, pr] = line.split(/\s+/);
+        if (id && pr) updateTask(id, { priority: pr as Priority });
+      } else if (line.startsWith("/add")) {
+        const parts = line.slice(5).split("|");
+        const title = parts[0]?.trim();
+        if (title) {
+          const priority = (parts[1]?.trim() as Priority) || "P1";
+          const status = (parts[2]?.trim() as ColumnKey) || "backlog";
+          const newTask: Task = {
+            id: uid(),
+            title,
+            priority,
+            status,
+            createdAt: new Date().toISOString(),
+            completed: false,
+          };
+          setTasks((prev) => [newTask, ...prev]);
+        }
+      }
+    }
+    return lines.filter((l) => !l.startsWith("/")).join("\n").trim();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,6 +73,14 @@ export default function PlanningChatbot() {
 
     try {
       setLoading(true);
+      const taskContext = tasks
+        .map((t) => `${t.id}: ${t.title} [${t.priority}] (${t.status})`)
+        .join("\n");
+      const systemMessage: ChatMessage = {
+        role: "system",
+        content:
+          `Current tasks:\n${taskContext}\nUse /move TASK_ID COLUMN, /priority TASK_ID PRIORITY, or /add TITLE | PRIORITY | COLUMN to update the board.`,
+      };
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -47,7 +90,7 @@ export default function PlanningChatbot() {
         body: JSON.stringify({
           model: (import.meta as any).env?.VITE_OPENAI_MODEL || "gpt-4o-mini",
           stream: true,
-          messages: [...messages, userMessage].map((m) => ({
+          messages: [systemMessage, ...messages, userMessage].map((m) => ({
             role: m.role,
             content: m.content,
           })),
@@ -87,6 +130,12 @@ export default function PlanningChatbot() {
           }
         }
       }
+      assistantMessage.content = applyCommands(assistantMessage.content);
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { ...assistantMessage };
+        return updated;
+      });
     } catch (err) {
       assistantMessage.content = "Something went wrong.";
       setMessages((prev) => {
