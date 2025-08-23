@@ -8,7 +8,7 @@ npm i
 npm run dev
 ```
 
-Optionally set `VITE_OPENAI_API_KEY` (and `VITE_OPENAI_MODEL`, default `gpt-4o-mini`) to enable AI-powered subtasks and the planning chatbot. If you have an AI Grants India key, supply it via `VITE_OPENAI_API_KEY`.
+Optionally set `VITE_OPENAI_API_KEY` (and `VITE_OPENAI_MODEL`, default `gpt-5`) to enable AI-powered subtasks and the planning chatbot. If you have an AI Grants India key, supply it via `VITE_OPENAI_API_KEY`.
 
 ## Features
 - Now / Next / Later / Backlog / Done
