@@ -46,7 +46,6 @@ import {
   EyeOff,
   Settings2,
   Flame,
-  Sparkles,
 } from "lucide-react";
 import { useTasks } from "@/lib/taskContext";
 import { useTemplates, DEFAULT_COLUMNS } from "@/lib/templateContext";
@@ -271,7 +270,7 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks }: {
                     size="sm"
                     onClick={() => onGenerateSubtasks(task)}
                   >
-                    <Sparkles className="h-4 w-4 mr-1" /> Subtasks
+                    Subtasks
                   </Button>
                 ) : null}
               </div>
@@ -690,11 +689,7 @@ export default function FocusStudioStarter() {
                           onClick={() => selectedTask && generateSubtasksFor(selectedTask)}
                           disabled={subtaskLoading}
                         >
-                          {subtaskLoading ? (
-                            "Generating..."
-                          ) : (
-                            <span className="flex items-center"><Sparkles className="h-4 w-4 mr-1" /> AI Subtasks</span>
-                          )}
+                          {subtaskLoading ? "Generating..." : "AI Subtasks"}
                         </Button>
                       </div>
                     </div>
