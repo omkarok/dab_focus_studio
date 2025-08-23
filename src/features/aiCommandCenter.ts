@@ -7,7 +7,16 @@ type TaskLike = Pick<Task, "title" | "notes">;
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
-const API_KEY = (import.meta as any).env?.VITE_OPENAI_API_KEY as string | undefined;
+// Pull the API key from typical env locations. When building with Vite,
+// variables prefixed with `VITE_` are exposed on `import.meta.env`. In other
+// environments (e.g. tests or server-side rendering) the key may only be
+// available via `process.env`. Support both to make it easier to configure via
+// repository or deployment secrets.
+const API_KEY =
+  ((import.meta as any).env?.VITE_OPENAI_API_KEY ??
+    (globalThis as any)?.process?.env?.VITE_OPENAI_API_KEY) as
+    | string
+    | undefined;
 
 export async function generateSubtasks(task: TaskLike): Promise<string[]> {
   if (!API_KEY) {
