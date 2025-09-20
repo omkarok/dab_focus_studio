@@ -73,6 +73,92 @@ export const DEFAULT_TEMPLATES: Template[] = [
     ],
   },
   {
+    name: "DAB Launch Day — Meta Dashboard",
+    columns: DEFAULT_COLUMNS,
+    tasks: [
+      {
+        id: uid(),
+        title: "Kickoff energy + engagement push",
+        priority: "P0",
+        status: "now",
+        createdAt: new Date().toISOString(),
+        due: "2025-09-21T00:00:00.000Z",
+        estimate: 2,
+        tags: ["DAB","Community"],
+        notes:
+          "Board: DAB Cohort 1 — Launch Sprint (Week 1)\nDescription: Welcome post, icebreaker poll, push 'I joined DAB' posts, baseline check-in.\nChecklist:\n- [ ] Welcome message + CTA\n- [ ] Icebreaker poll live\n- [ ] DM nudge to silent members\n- [ ] Collect Day 1 activation %\nLinked metrics: Activation Day 1 (m-activation-rate), LinkedIn Posts (m-linkedin-posts).",
+      },
+      {
+        id: uid(),
+        title: "Meta dashboard live (public readonly)",
+        priority: "P0",
+        status: "now",
+        createdAt: new Date().toISOString(),
+        due: "2025-09-22T00:00:00.000Z",
+        estimate: 3,
+        tags: ["DAB","Dashboard"],
+        notes:
+          "Description: Publish counters and gauges. Share link in cohort space.\nChecklist:\n- [ ] Topline counters wired\n- [ ] Engagement gauge wired\n- [ ] Share link in community\nWidgets to verify: Topline Stats, Community Energy Level gauge, Engagement Metrics bar, Build Velocity line, Industry Spread pie, Countries map, DevOps Experience counter, Gamified Metrics table, AI + DAB counters.",
+      },
+      {
+        id: uid(),
+        title: "Early wins spotlight draft",
+        priority: "P1",
+        status: "next",
+        createdAt: new Date().toISOString(),
+        due: "2025-09-24T00:00:00.000Z",
+        estimate: 2,
+        tags: ["DAB","Story"],
+        notes:
+          "Description: Feature first 3 projects and 3 golden dashboards.\nChecklist:\n- [ ] Collect project links\n- [ ] Publish spotlight post\nLinked metrics: Projects Started (m-projects-started), Golden Dashboards (m-golden-dashboards).",
+      },
+      {
+        id: uid(),
+        title: "Wire community webhook ingest (/api/dab/community)",
+        priority: "P1",
+        status: "later",
+        createdAt: new Date().toISOString(),
+        estimate: 2,
+        tags: ["Data","Webhook"],
+        notes:
+          "Payload mappings → metrics:\n- messages → m-community-messages\n- linkedin_posts → m-linkedin-posts\n- activation_rate → m-activation-rate\n- energy_level → m-energy-level\nGoal: keep activation >= 90% and energy >= 90%.",
+      },
+      {
+        id: uid(),
+        title: "Wire progress webhook ingest (/api/dab/progress)",
+        priority: "P1",
+        status: "later",
+        createdAt: new Date().toISOString(),
+        estimate: 2,
+        tags: ["Data","Webhook"],
+        notes:
+          "Payload mappings → metrics:\n- projects.started → m-projects-started\n- projects.shipped → m-projects-shipped\n- dashboards.golden → m-golden-dashboards\n- ai.workflows → m-ai-workflows\nLine chart x-axis = week for velocity tracking.",
+      },
+      {
+        id: uid(),
+        title: "Manual data source ready for launch day edits",
+        priority: "P2",
+        status: "backlog",
+        createdAt: new Date().toISOString(),
+        estimate: 1,
+        tags: ["Ops","Data"],
+        notes:
+          "Confirm manual data source (ds-manual) is documented for quick counter edits. Shortcuts: Share Meta Dashboard (copy link) and Update Activation %.",
+      },
+      {
+        id: uid(),
+        title: "OKR tracking sync",
+        priority: "P2",
+        status: "backlog",
+        createdAt: new Date().toISOString(),
+        estimate: 1,
+        tags: ["OKR","Alignment"],
+        notes:
+          "Objectives:\n- Make the cohort feel alive on Day 1 → Key results: Activation Day 1 target 90%, LinkedIn Posts target 20.\n- Ship the Meta Dashboard fast → Key results: Energy Level target 90%, Projects Started target 5.",
+      },
+    ],
+  },
+  {
     name: "Interview Prep — Observability Walkthrough",
     columns: DEFAULT_COLUMNS,
     tasks: [
