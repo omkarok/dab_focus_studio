@@ -63,6 +63,13 @@ import {
 } from "lucide-react";
 import { useTasks } from "@/lib/taskContext";
 import { useTemplates, DEFAULT_COLUMNS } from "@/lib/templateContext";
+import { useProjects } from "@/lib/projectContext";
+import { useTimeTracking } from "@/lib/timeContext";
+import ProjectSwitcher from "@/components/ProjectSwitcher";
+import CalendarView from "@/components/CalendarView";
+import ViewToggle from "@/components/ViewToggle";
+import TimeTracker from "@/components/TimeTracker";
+import TimeReport from "@/components/TimeReport";
 
 // ------------------------------------------------------------
 // AI Consulting Studio: Local task & project manager
@@ -91,6 +98,7 @@ export type Task = {
   completed?: boolean;
   createdAt: string; // ISO
   completedAt?: string | null;
+  projectId?: string;
 };
 
 export type Template = {
@@ -331,8 +339,11 @@ function Column({ id, title, count, children }: { id: ColumnKey; title: string; 
 export default function FocusStudioStarter() {
   const { tasks, setTasks, updateTask } = useTasks();
   const { templates, setTemplates } = useTemplates();
+  const { activeProject, activeProjectId } = useProjects();
+  const timeTracking = useTimeTracking();
   const [theme, setTheme] = useLocalStorage<"light" | "dark" | "comfort">(THEME_KEY, "comfort");
   const [focusMode, setFocusMode] = useState(false);
+  const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
@@ -345,6 +356,7 @@ export default function FocusStudioStarter() {
   const [notesDraft, setNotesDraft] = useState("");
   const [subtaskLoading, setSubtaskLoading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [timeReportOpen, setTimeReportOpen] = useState(false);
 
   // Editable fields for the task detail dialog
   const [editTitle, setEditTitle] = useState("");
@@ -368,6 +380,7 @@ export default function FocusStudioStarter() {
   const stats = useMemo(() => computeStats(tasks), [tasks]);
   const completedToday = useMemo(() => tasks.filter((t) => t.completed && isToday(t.completedAt)).length, [tasks]);
   const progressPct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+  const taskNames = useMemo(() => new Map(tasks.map((t) => [t.id, t.title])), [tasks]);
 
   useEffect(() => {
     document.documentElement.classList.remove("light", "dark");
@@ -508,7 +521,14 @@ export default function FocusStudioStarter() {
   return (
     <div className={`min-h-[100dvh] w-full ${comfort ? "comfort-bg" : "bg-background"}`}>
       {/* ===== Top Bar ===== */}
-      <div className="sticky top-0 z-30 backdrop-blur-md bg-background/80 border-b border-border">
+      <div
+        className="sticky top-0 z-30 backdrop-blur-md border-b border-border"
+        style={{
+          backgroundColor: activeProject.color
+            ? `color-mix(in srgb, ${activeProject.color} 4%, var(--background) 96%)`
+            : undefined,
+        }}
+      >
         <div className="max-w-[1440px] mx-auto px-4 py-2.5">
           {/* Row 1: Brand + main controls */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -518,6 +538,11 @@ export default function FocusStudioStarter() {
               </div>
               <h1 className="text-base font-semibold text-foreground whitespace-nowrap">AI Consulting Studio</h1>
             </div>
+
+            <div className="h-5 w-px bg-border hidden sm:block" />
+
+            {/* Project Switcher */}
+            <ProjectSwitcher />
 
             <div className="h-5 w-px bg-border hidden sm:block" />
 
@@ -585,8 +610,8 @@ export default function FocusStudioStarter() {
       </div>
 
       <main className="max-w-[1440px] mx-auto px-4 py-5 space-y-5">
-        {/* ===== Quick Add + Timer Row ===== */}
-        <div className="grid md:grid-cols-3 gap-4">
+        {/* ===== Quick Add + Timer + Time Tracker Row ===== */}
+        <div className="grid md:grid-cols-4 gap-4">
           <div className="md:col-span-2 rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-3">
               <Plus className="h-4 w-4 text-accent" />
@@ -662,7 +687,22 @@ export default function FocusStudioStarter() {
               Done today: <span className="font-semibold text-foreground">{completedToday}</span>
             </div>
           </div>
+
+          {/* Time Tracker */}
+          <TimeTracker
+            currentTaskId={selectedTaskId ?? undefined}
+            currentProjectId={activeProjectId}
+            taskNames={taskNames}
+            onOpenReport={() => setTimeReportOpen(true)}
+          />
         </div>
+
+        {/* Time Report Dialog */}
+        <TimeReport
+          open={timeReportOpen}
+          onOpenChange={setTimeReportOpen}
+          taskNames={taskNames}
+        />
 
         {/* ===== Focus Mode Banner ===== */}
         <AnimatePresence>
@@ -680,7 +720,20 @@ export default function FocusStudioStarter() {
           )}
         </AnimatePresence>
 
-        {/* ===== Board ===== */}
+        {/* ===== View Toggle ===== */}
+        {!focusMode && (
+          <div className="flex items-center justify-between">
+            <ViewToggle view={viewMode} onViewChange={setViewMode} />
+          </div>
+        )}
+
+        {/* ===== Board / Calendar ===== */}
+        {!focusMode && viewMode === "calendar" ? (
+          <CalendarView
+            tasks={tasks}
+            onSelectTask={(id) => { setSelectedTaskId(id); setTaskDialogOpen(true); }}
+          />
+        ) : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           {!focusMode ? (
             <div className="grid lg:grid-cols-5 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-4">
@@ -788,6 +841,7 @@ export default function FocusStudioStarter() {
             </div>
           )}
         </DndContext>
+        )}
 
         {/* ===== Task Detail Dialog ===== */}
         <Dialog

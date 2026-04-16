@@ -1,7 +1,12 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import type { Template, ColumnKey } from "@/FocusStudioStarter";
+import { useProjects } from "@/lib/projectContext";
 
-const LS_KEY = "focus_studio_templates_v1";
+const LEGACY_KEY = "focus_studio_templates_v1";
+
+function templateKeyForProject(projectId: string): string {
+  return `acs_templates_${projectId}`;
+}
 
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
@@ -179,6 +184,39 @@ export const DEFAULT_TEMPLATES: Template[] = [
   },
 ];
 
+function loadCustomTemplatesForProject(projectId: string): Template[] {
+  try {
+    const key = templateKeyForProject(projectId);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      return JSON.parse(raw) as Template[];
+    }
+    // Migration: for default project, check legacy key
+    if (projectId === "default") {
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy) as Template[];
+        // Filter out templates that match default template names (those are built-in)
+        const defaultNames = new Set(DEFAULT_TEMPLATES.map((t) => t.name));
+        const custom = parsed.filter((t) => !defaultNames.has(t.name));
+        if (custom.length > 0) {
+          try {
+            localStorage.setItem(templateKeyForProject(projectId), JSON.stringify(custom));
+          } catch {
+            // ignore
+          }
+        }
+        // Clean up legacy key
+        localStorage.removeItem(LEGACY_KEY);
+        return custom;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
 interface TemplateContextValue {
   templates: Template[];
   setTemplates: React.Dispatch<React.SetStateAction<Template[]>>;
@@ -187,20 +225,45 @@ interface TemplateContextValue {
 const TemplateContext = createContext<TemplateContextValue | undefined>(undefined);
 
 export function TemplateProvider({ children }: { children: React.ReactNode }) {
-  const [templates, setTemplates] = useState<Template[]>(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      return raw ? (JSON.parse(raw) as Template[]) : DEFAULT_TEMPLATES;
-    } catch {
-      return DEFAULT_TEMPLATES;
-    }
-  });
+  const { activeProjectId } = useProjects();
+  const [customTemplates, setCustomTemplates] = useState<Template[]>(() =>
+    loadCustomTemplatesForProject(activeProjectId)
+  );
 
+  // When active project changes, load that project's custom templates
+  useEffect(() => {
+    setCustomTemplates(loadCustomTemplatesForProject(activeProjectId));
+  }, [activeProjectId]);
+
+  // Persist custom templates whenever they change
   useEffect(() => {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(templates));
-    } catch {}
-  }, [templates]);
+      const key = templateKeyForProject(activeProjectId);
+      localStorage.setItem(key, JSON.stringify(customTemplates));
+    } catch {
+      // ignore
+    }
+  }, [customTemplates, activeProjectId]);
+
+  // Combine default templates (available to all projects) with project-scoped custom ones
+  const templates = useMemo(
+    () => [...DEFAULT_TEMPLATES, ...customTemplates],
+    [customTemplates]
+  );
+
+  // setTemplates: when user adds a template, it goes into custom templates
+  const setTemplates: React.Dispatch<React.SetStateAction<Template[]>> = useCallback(
+    (action) => {
+      setCustomTemplates((prevCustom) => {
+        const allPrev = [...DEFAULT_TEMPLATES, ...prevCustom];
+        const next = typeof action === "function" ? action(allPrev) : action;
+        // Only keep the non-default templates as custom
+        const defaultNames = new Set(DEFAULT_TEMPLATES.map((t) => t.name));
+        return next.filter((t) => !defaultNames.has(t.name));
+      });
+    },
+    []
+  );
 
   return (
     <TemplateContext.Provider value={{ templates, setTemplates }}>
@@ -214,4 +277,3 @@ export function useTemplates() {
   if (!ctx) throw new Error("useTemplates must be used within TemplateProvider");
   return ctx;
 }
-
