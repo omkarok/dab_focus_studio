@@ -2,11 +2,124 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 255 255 255;
-  --foreground: 10 10 10;
+@layer base {
+  :root {
+    --background: 255 255 255;
+    --foreground: 23 23 23;
+    --card: 255 255 255;
+    --card-foreground: 23 23 23;
+    --muted: 245 245 245;
+    --muted-foreground: 115 115 115;
+    --border: 229 229 229;
+    --accent: 99 102 241;
+    --accent-foreground: 255 255 255;
+    --ring: 99 102 241;
+  }
+
+  .dark {
+    --background: 10 10 10;
+    --foreground: 245 245 245;
+    --card: 23 23 23;
+    --card-foreground: 245 245 245;
+    --muted: 38 38 38;
+    --muted-foreground: 163 163 163;
+    --border: 64 64 64;
+    --accent: 129 140 248;
+    --accent-foreground: 10 10 10;
+    --ring: 129 140 248;
+  }
+
+  * {
+    border-color: rgb(var(--border));
+  }
+
+  body {
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
-.dark {
-  --background: 10 10 10;
-  --foreground: 245 245 245;
+
+/* Smooth transitions globally */
+*, *::before, *::after {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Override for elements that need no transition (drag, animations) */
+[style*="transform"] {
+  transition-property: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--muted-foreground) / 0.5);
+}
+
+/* Column containers — subtle hover glow */
+.column-drop-zone {
+  transition: box-shadow 200ms ease;
+}
+.column-drop-zone:hover {
+  box-shadow: 0 0 0 1px rgb(var(--accent) / 0.15), 0 2px 8px rgb(var(--accent) / 0.06);
+}
+
+/* Now-column accent */
+.column-now {
+  border-color: rgb(var(--accent) / 0.3);
+  background: rgb(var(--accent) / 0.03);
+}
+.dark .column-now {
+  background: rgb(var(--accent) / 0.06);
+}
+
+/* Task card hover */
+.task-card {
+  cursor: pointer;
+}
+.task-card:hover {
+  box-shadow: 0 2px 8px rgb(var(--foreground) / 0.06);
+  border-color: rgb(var(--accent) / 0.3);
+}
+
+/* Hide actions by default, show on hover */
+.task-card .task-actions {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity 150ms ease, max-height 200ms ease;
+}
+.task-card:hover .task-actions,
+.task-card:focus-within .task-actions {
+  opacity: 1;
+  max-height: 60px;
+}
+
+/* Progress bar accent */
+.progress-accent > div {
+  background: rgb(var(--accent));
+}
+
+/* Focus ring utility */
+.focus-ring:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+/* Comfort mode overrides */
+.comfort-bg {
+  background: linear-gradient(to bottom, rgb(var(--muted) / 0.5), rgb(var(--background)));
 }

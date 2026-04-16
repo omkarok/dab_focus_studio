@@ -23,187 +23,144 @@ export const DEFAULT_TEMPLATES: Template[] = [
       { id: uid(), title: "Walk + water + stretch", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1 },
     ],
   },
-  // ——— DAB-focused templates ———
+  // ——— AI Consulting templates ———
   {
-    name: "DAB GTM Sprint — Today",
+    name: "Client Discovery Call Prep",
     columns: DEFAULT_COLUMNS,
     tasks: [
-      { id: uid(), title: "Finalize GitHub GTM one-pager", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["DAB","GTM"] },
-      { id: uid(), title: "Assemble demo storyboard screenshots", priority: "P1", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["DAB","Demo"] },
+      { id: uid(), title: "Research client's industry & recent AI news", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["Research","Client"] },
+      { id: uid(), title: "Review client's tech stack & current pain points", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Research","Client"] },
 
-      { id: uid(), title: "Update homepage: 5 scholarships secured + 20 seats remaining", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["DAB","Landing"] },
-      { id: uid(), title: "Draft sponsor email with projected outcomes", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Partnership","Email"] },
+      { id: uid(), title: "Prepare discovery question list (goals, data maturity, constraints)", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Prep","Discovery"] },
+      { id: uid(), title: "Draft 3 potential AI use cases to discuss", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 2, tags: ["Strategy","Use Cases"] },
 
-      { id: uid(), title: "Prep GTM metrics table (CAC, LTV, MRR scenarios)", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 2, tags: ["GTM","Metrics"] },
-      { id: uid(), title: "Record 90s demo teaser", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 2, tags: ["Video","Social"] },
+      { id: uid(), title: "Prepare ROI talking points & benchmark data", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["ROI","Data"] },
+      { id: uid(), title: "Set up meeting notes template & follow-up tracker", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Ops","Notes"] },
 
-      { id: uid(), title: "Set up UTM tracking for GitHub ref", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Analytics"] },
+      { id: uid(), title: "Queue case studies relevant to client's domain", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Sales","Case Study"] },
     ],
   },
   {
-    name: "Partnership Day — Outreach & Collab",
-    columns: DEFAULT_COLUMNS,
-    tasks: [
-      { id: uid(), title: "Scoutflo: finalize one-pager & send assets", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Partnership","Scoutflo"] },
-      { id: uid(), title: "Zenduty: tailor proposal (on-call + incident sims)", priority: "P1", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["Partnership","Zenduty"] },
-
-      { id: uid(), title: "ClickHouse for Observability: outreach email + CTA", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["ClickHouse","Observability"] },
-      { id: uid(), title: "Collect 3 logo/brand guidelines from partners", priority: "P2", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Brand"] },
-
-      { id: uid(), title: "Draft social co-announcement copy options", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Social","Copy"] },
-      { id: uid(), title: "Create shared folder structure for partner assets", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Ops"] },
-
-      { id: uid(), title: "Spreadsheet: partner tracking (stage, owner, next step)", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["CRM"] },
-    ],
-  },
-  {
-    name: "Content Ship Day — Newsletter + Social",
-    columns: DEFAULT_COLUMNS,
-    tasks: [
-      { id: uid(), title: "Outline newsletter (proof + momentum + CTA)", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Newsletter","DAB"] },
-      { id: uid(), title: "Write newsletter draft v1", priority: "P1", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["Writing"] },
-
-      { id: uid(), title: "Edit to 9.9/10 (clarity, pacing, punchy CTA)", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Editing"] },
-      { id: uid(), title: "Create LinkedIn carousel (5–7 slides)", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 2, tags: ["Design","Social"] },
-
-      { id: uid(), title: "Record 60–90s video teaser", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 2, tags: ["Video"] },
-      { id: uid(), title: "Schedule posts + newsletter send", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Scheduling"] },
-
-      { id: uid(), title: "Collect 3 quick testimonials for social proof", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Testimonial"] },
-    ],
-  },
-  {
-    name: "DAB Launch Day — Meta Dashboard",
+    name: "AI Strategy Workshop",
     columns: DEFAULT_COLUMNS,
     tasks: [
       {
         id: uid(),
-        title: "Kickoff energy + engagement push",
+        title: "Finalize workshop agenda & slide deck",
         priority: "P0",
         status: "now",
         createdAt: new Date().toISOString(),
-        due: "2025-09-21T00:00:00.000Z",
-        estimate: 2,
-        tags: ["DAB","Community"],
-        notes:
-          "Board: DAB Cohort 1 — Launch Sprint (Week 1)\nDescription: Welcome post, icebreaker poll, push 'I joined DAB' posts, baseline check-in.\nChecklist:\n- [ ] Welcome message + CTA\n- [ ] Icebreaker poll live\n- [ ] DM nudge to silent members\n- [ ] Collect Day 1 activation %\nLinked metrics: Activation Day 1 (m-activation-rate), LinkedIn Posts (m-linkedin-posts).",
-      },
-      {
-        id: uid(),
-        title: "Meta dashboard live (public readonly)",
-        priority: "P0",
-        status: "now",
-        createdAt: new Date().toISOString(),
-        due: "2025-09-22T00:00:00.000Z",
         estimate: 3,
-        tags: ["DAB","Dashboard"],
-        notes:
-          "Description: Publish counters and gauges. Share link in cohort space.\nChecklist:\n- [ ] Topline counters wired\n- [ ] Engagement gauge wired\n- [ ] Share link in community\nWidgets to verify: Topline Stats, Community Energy Level gauge, Engagement Metrics bar, Build Velocity line, Industry Spread pie, Countries map, DevOps Experience counter, Gamified Metrics table, AI + DAB counters.",
+        tags: ["Workshop","Deck"],
+        notes: "Sections:\n- Current state assessment\n- AI opportunity mapping\n- Feasibility vs. impact matrix\n- Roadmap prioritization\n- Q&A + next steps",
       },
-      {
-        id: uid(),
-        title: "Early wins spotlight draft",
-        priority: "P1",
-        status: "next",
-        createdAt: new Date().toISOString(),
-        due: "2025-09-24T00:00:00.000Z",
-        estimate: 2,
-        tags: ["DAB","Story"],
-        notes:
-          "Description: Feature first 3 projects and 3 golden dashboards.\nChecklist:\n- [ ] Collect project links\n- [ ] Publish spotlight post\nLinked metrics: Projects Started (m-projects-started), Golden Dashboards (m-golden-dashboards).",
-      },
-      {
-        id: uid(),
-        title: "Wire community webhook ingest (/api/dab/community)",
-        priority: "P1",
-        status: "later",
-        createdAt: new Date().toISOString(),
-        estimate: 2,
-        tags: ["Data","Webhook"],
-        notes:
-          "Payload mappings → metrics:\n- messages → m-community-messages\n- linkedin_posts → m-linkedin-posts\n- activation_rate → m-activation-rate\n- energy_level → m-energy-level\nGoal: keep activation >= 90% and energy >= 90%.",
-      },
-      {
-        id: uid(),
-        title: "Wire progress webhook ingest (/api/dab/progress)",
-        priority: "P1",
-        status: "later",
-        createdAt: new Date().toISOString(),
-        estimate: 2,
-        tags: ["Data","Webhook"],
-        notes:
-          "Payload mappings → metrics:\n- projects.started → m-projects-started\n- projects.shipped → m-projects-shipped\n- dashboards.golden → m-golden-dashboards\n- ai.workflows → m-ai-workflows\nLine chart x-axis = week for velocity tracking.",
-      },
-      {
-        id: uid(),
-        title: "Manual data source ready for launch day edits",
-        priority: "P2",
-        status: "backlog",
-        createdAt: new Date().toISOString(),
-        estimate: 1,
-        tags: ["Ops","Data"],
-        notes:
-          "Confirm manual data source (ds-manual) is documented for quick counter edits. Shortcuts: Share Meta Dashboard (copy link) and Update Activation %.",
-      },
-      {
-        id: uid(),
-        title: "OKR tracking sync",
-        priority: "P2",
-        status: "backlog",
-        createdAt: new Date().toISOString(),
-        estimate: 1,
-        tags: ["OKR","Alignment"],
-        notes:
-          "Objectives:\n- Make the cohort feel alive on Day 1 → Key results: Activation Day 1 target 90%, LinkedIn Posts target 20.\n- Ship the Meta Dashboard fast → Key results: Energy Level target 90%, Projects Started target 5.",
-      },
+      { id: uid(), title: "Prepare AI maturity assessment questionnaire", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["Assessment","Workshop"] },
+
+      { id: uid(), title: "Build opportunity-impact matrix template", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Framework","Strategy"] },
+      { id: uid(), title: "Compile industry-specific AI case studies (3-5)", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 2, tags: ["Research","Case Study"] },
+
+      { id: uid(), title: "Prepare hands-on demo: AI tool walkthrough", priority: "P1", status: "later", createdAt: new Date().toISOString(), estimate: 2, tags: ["Demo","Workshop"] },
+      { id: uid(), title: "Draft post-workshop summary & recommendations template", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Deliverable","Template"] },
+
+      { id: uid(), title: "Set up feedback form for workshop attendees", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Feedback","Ops"] },
     ],
   },
   {
-    name: "Interview Prep — Observability Walkthrough",
+    name: "AI Pilot / PoC Sprint",
     columns: DEFAULT_COLUMNS,
     tasks: [
-      { id: uid(), title: "Spin up EKS (sample app + Ingress/ALB)", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 3, tags: ["EKS","K8s"] },
-      { id: uid(), title: "Instrument APM (traces, metrics, logs)", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["APM","Observability"] },
+      {
+        id: uid(),
+        title: "Define pilot scope, success metrics & timeline",
+        priority: "P0",
+        status: "now",
+        createdAt: new Date().toISOString(),
+        estimate: 2,
+        tags: ["Scope","PoC"],
+        notes: "Key decisions:\n- [ ] Use case confirmed\n- [ ] Success criteria (accuracy, latency, cost)\n- [ ] Data access confirmed\n- [ ] Timeline (2-4 weeks)\n- [ ] Stakeholder sign-off",
+      },
+      { id: uid(), title: "Set up dev environment & API keys", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Setup","Dev"] },
 
-      { id: uid(), title: "Run synthetic error + latency scenarios", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["SRE","Chaos"] },
-      { id: uid(), title: "Prepare 10 FAQ answers (TSM focus)", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Interview"] },
+      { id: uid(), title: "Build initial prompt/pipeline prototype", priority: "P0", status: "next", createdAt: new Date().toISOString(), estimate: 3, tags: ["Build","Prototype"] },
+      { id: uid(), title: "Prepare sample dataset & evaluation harness", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 2, tags: ["Data","Eval"] },
 
-      { id: uid(), title: "Tear-down + cleanup script", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Ops","Cleanup"] },
-      { id: uid(), title: "Deck: concise demo flow (5 slides)", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Deck"] },
+      { id: uid(), title: "Run evaluation: accuracy, cost, latency benchmarks", priority: "P1", status: "later", createdAt: new Date().toISOString(), estimate: 2, tags: ["Eval","Metrics"] },
+      { id: uid(), title: "Document findings & build demo for stakeholders", priority: "P1", status: "later", createdAt: new Date().toISOString(), estimate: 2, tags: ["Demo","Report"] },
 
-      { id: uid(), title: "Practice 15-min live walkthrough", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Practice"] },
+      { id: uid(), title: "Draft go/no-go recommendation & production roadmap", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Strategy","Deliverable"] },
     ],
   },
   {
-    name: "Ops & Finance — Cleanup",
+    name: "Client Deliverable Day",
     columns: DEFAULT_COLUMNS,
     tasks: [
-      { id: uid(), title: "Audit seat counter on landing page", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["DAB","Landing"] },
-      { id: uid(), title: "Payment flow sanity check (test txn + redirect)", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Payments"] },
+      { id: uid(), title: "Outline report structure & key findings", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Writing","Report"] },
+      { id: uid(), title: "Write executive summary & recommendations", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["Writing","Deliverable"] },
 
-      { id: uid(), title: "Webhook signature validation notes", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Webhook"] },
-      { id: uid(), title: "Invoice template + GST checklist", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Finance"] },
+      { id: uid(), title: "Build supporting charts, diagrams & architecture visuals", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 2, tags: ["Design","Visuals"] },
+      { id: uid(), title: "Write detailed technical appendix", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 2, tags: ["Writing","Technical"] },
 
-      { id: uid(), title: "CRM: tag new leads + next actions", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["CRM"] },
-      { id: uid(), title: "Auto-reply for scholarship inquiries", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Ops","Automation"] },
+      { id: uid(), title: "Internal review pass: clarity, accuracy, formatting", priority: "P1", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Review","QA"] },
+      { id: uid(), title: "Prepare client presentation deck (5-10 slides)", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 2, tags: ["Deck","Presentation"] },
 
-      { id: uid(), title: "Back up docs & assets", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Backup"] },
+      { id: uid(), title: "Send deliverable + schedule walkthrough call", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Client","Follow-up"] },
     ],
   },
   {
-    name: "Focus Studio OSS — Shipping",
+    name: "Business Development Day",
     columns: DEFAULT_COLUMNS,
     tasks: [
-      { id: uid(), title: "Repo init + MIT license + README", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["OSS","Repo"] },
-      { id: uid(), title: "Add two starter templates (Deep Work, Sprint Day)", priority: "P1", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Templates"] },
+      { id: uid(), title: "Follow up on warm leads & pending proposals", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Sales","Pipeline"] },
+      { id: uid(), title: "Draft proposal for new prospect", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["Proposal","Sales"] },
 
-      { id: uid(), title: "Set up shadcn/ui + Tailwind config", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["UI"] },
-      { id: uid(), title: "Demo GIFs (focus mode + import/export)", priority: "P2", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Docs","Demo"] },
+      { id: uid(), title: "Update CRM: pipeline stages, next actions, notes", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["CRM","Ops"] },
+      { id: uid(), title: "LinkedIn outreach: connect with 5 target contacts", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Outreach","LinkedIn"] },
 
-      { id: uid(), title: "Issue templates + contribution guide", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["OSS"] },
-      { id: uid(), title: "Publish template on GitHub + tweet", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Launch"] },
+      { id: uid(), title: "Refine service offerings page & pricing", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Marketing","Pricing"] },
+      { id: uid(), title: "Research 3 new companies to target", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Research","Prospecting"] },
 
-      { id: uid(), title: "Add JSON schema for templates", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 2, tags: ["DX"] },
+      { id: uid(), title: "Review & update invoice tracker + outstanding payments", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Finance","Ops"] },
+    ],
+  },
+  {
+    name: "AI Audit & Assessment",
+    columns: DEFAULT_COLUMNS,
+    tasks: [
+      {
+        id: uid(),
+        title: "Map client's current AI/ML usage across departments",
+        priority: "P0",
+        status: "now",
+        createdAt: new Date().toISOString(),
+        estimate: 3,
+        tags: ["Audit","Discovery"],
+        notes: "Areas to assess:\n- [ ] Data infrastructure & quality\n- [ ] Existing ML models & pipelines\n- [ ] Team capabilities & skill gaps\n- [ ] Vendor/tool landscape\n- [ ] Governance & compliance posture",
+      },
+      { id: uid(), title: "Conduct stakeholder interviews (3-5 dept leads)", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["Interviews","Stakeholder"] },
+
+      { id: uid(), title: "Score AI maturity across 5 dimensions", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 2, tags: ["Assessment","Framework"] },
+      { id: uid(), title: "Identify quick wins vs. strategic bets", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Strategy","Prioritization"] },
+
+      { id: uid(), title: "Draft risk register: data privacy, bias, vendor lock-in", priority: "P1", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Risk","Compliance"] },
+      { id: uid(), title: "Build 6-month AI roadmap with milestones", priority: "P1", status: "later", createdAt: new Date().toISOString(), estimate: 2, tags: ["Roadmap","Strategy"] },
+
+      { id: uid(), title: "Compile final assessment report & present to leadership", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 2, tags: ["Deliverable","Presentation"] },
+    ],
+  },
+  {
+    name: "Content & Thought Leadership",
+    columns: DEFAULT_COLUMNS,
+    tasks: [
+      { id: uid(), title: "Outline article: AI trend or client lesson learned", priority: "P0", status: "now", createdAt: new Date().toISOString(), estimate: 1, tags: ["Writing","Content"] },
+      { id: uid(), title: "Write first draft (800-1200 words)", priority: "P1", status: "now", createdAt: new Date().toISOString(), estimate: 2, tags: ["Writing","Draft"] },
+
+      { id: uid(), title: "Edit for clarity, add data points & examples", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Editing","Content"] },
+      { id: uid(), title: "Create LinkedIn carousel or infographic", priority: "P1", status: "next", createdAt: new Date().toISOString(), estimate: 2, tags: ["Design","Social"] },
+
+      { id: uid(), title: "Schedule LinkedIn post + newsletter send", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Scheduling","Social"] },
+      { id: uid(), title: "Engage with 10 comments/posts in AI consulting space", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Engagement","LinkedIn"] },
+
+      { id: uid(), title: "Brainstorm 3 future content ideas from client work", priority: "P2", status: "backlog", createdAt: new Date().toISOString(), estimate: 1, tags: ["Ideas","Pipeline"] },
     ],
   },
   {
@@ -216,7 +173,7 @@ export const DEFAULT_TEMPLATES: Template[] = [
       { id: uid(), title: "Inbox Zero (15m)", priority: "P2", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Ops"] },
       { id: uid(), title: "Walk + water + stretch", priority: "P2", status: "next", createdAt: new Date().toISOString(), estimate: 1, tags: ["Health"] },
 
-      { id: uid(), title: "Read 20 pages (AI/DevOps)", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Learning"] },
+      { id: uid(), title: "Read 20 pages (AI/consulting)", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Learning"] },
       { id: uid(), title: "Reflect & journal (10m)", priority: "P2", status: "later", createdAt: new Date().toISOString(), estimate: 1, tags: ["Mindset"] },
     ],
   },
