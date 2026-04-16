@@ -21,19 +21,23 @@ export function DialogContent({ className, children }: React.HTMLAttributes<HTML
   if (!ctx.open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={()=>ctx.setOpen(false)} />
-      <div className={cn("relative z-10 w-full max-w-lg rounded-2xl border bg-white dark:bg-neutral-900 p-4 shadow-xl", className)}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={()=>ctx.setOpen(false)} />
+      <div className={cn(
+        "relative z-10 w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl",
+        "animate-in fade-in-0 zoom-in-95",
+        className
+      )}>
         {children}
       </div>
     </div>
   );
 }
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mb-2", className)} {...props} />;
+  return <div className={cn("mb-4", className)} {...props} />;
 }
 export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn("text-lg font-semibold", className)} {...props} />;
+  return <h3 className={cn("text-lg font-semibold text-foreground", className)} {...props} />;
 }
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mt-3 flex justify-end gap-2", className)} {...props} />;
+  return <div className={cn("mt-4 flex justify-end gap-2", className)} {...props} />;
 }

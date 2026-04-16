@@ -11,13 +11,16 @@ export function Tabs({ value, defaultValue, onValueChange, children, className }
   return <div className={className}><TabsCtx.Provider value={{ value: v, setValue }}>{children}</TabsCtx.Provider></div>;
 }
 export function TabsList({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("inline-flex rounded-xl border p-1 gap-1", className)} {...props} />;
+  return <div className={cn("inline-flex rounded-xl border border-border bg-muted/50 p-1 gap-1", className)} {...props} />;
 }
 export function TabsTrigger({ value, children }: { value: string; children: React.ReactNode }) {
   const ctx = React.useContext(TabsCtx)!;
   const active = ctx.value === value;
   return (
-    <button className={cn("px-3 py-1.5 rounded-lg text-sm", active ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-neutral-100 dark:hover:bg-neutral-800")} onClick={()=>ctx.setValue(value)}>
+    <button className={cn(
+      "px-3 py-1.5 rounded-lg text-sm transition-colors",
+      active ? "bg-accent text-accent-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+    )} onClick={()=>ctx.setValue(value)}>
       {children}
     </button>
   );

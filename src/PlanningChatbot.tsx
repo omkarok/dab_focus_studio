@@ -20,7 +20,7 @@ export default function PlanningChatbot() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "Hi! I can help plan your tasks and priorities. Ask me anything.",
+      content: "Hi! I can help plan your AI consulting tasks, prioritize client work, and organize your pipeline. Ask me anything.",
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -156,47 +156,50 @@ export default function PlanningChatbot() {
   return (
     <div className="fixed bottom-4 right-4 z-50">
       {open ? (
-        <div className="flex flex-col w-80 sm:w-96 h-96 bg-background border rounded-lg shadow-lg">
-          <div className="flex items-center justify-between p-2 border-b">
-            <span className="font-medium text-sm">Planning Assistant</span>
+        <div className="flex flex-col w-80 sm:w-96 h-[420px] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-accent animate-pulse" />
+              <span className="font-medium text-sm text-foreground">Planning Assistant</span>
+            </div>
             <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <div ref={containerRef} className="flex-1 overflow-y-auto p-2 space-y-2 text-sm">
+          <div ref={containerRef} className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
             {messages.map((m, i) => (
               <div
                 key={i}
                 className={cn(
-                  "p-2 rounded-md whitespace-pre-wrap",
+                  "px-3 py-2 rounded-xl whitespace-pre-wrap max-w-[85%] text-sm leading-relaxed",
                   m.role === "user"
-                    ? "bg-primary text-primary-foreground ml-auto" 
-                    : "bg-muted mr-auto"
+                    ? "bg-accent text-accent-foreground ml-auto"
+                    : "bg-muted text-foreground mr-auto"
                 )}
               >
                 {m.content}
               </div>
             ))}
           </div>
-          <form onSubmit={handleSubmit} className="p-2 border-t">
+          <form onSubmit={handleSubmit} className="p-3 border-t border-border bg-muted/20">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your plan…"
-              className="mb-2"
+              placeholder="Ask about your plan..."
+              className="mb-2 text-sm"
               rows={2}
             />
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Thinking…" : "Send"}
+              {loading ? "Thinking..." : "Send"}
             </Button>
           </form>
         </div>
       ) : (
         <Button
-          className="h-12 w-12 rounded-full shadow-lg"
+          className="h-12 w-12 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-transform"
           onClick={() => setOpen(true)}
         >
-          <MessageCircle className="h-6 w-6" />
+          <MessageCircle className="h-5 w-5" />
         </Button>
       )}
     </div>
