@@ -1,5 +1,5 @@
 import FocusStudioStarter from "./FocusStudioStarter";
-import PlanningChatbot from "./PlanningChatbot";
+import PlannerBar from "./features/dailyPlanner/PlannerBar";
 import { TaskProvider } from "@/lib/taskContext";
 import { TemplateProvider } from "@/lib/templateContext";
 import { ProjectProvider } from "@/lib/projectContext";
@@ -15,9 +15,9 @@ export default function App() {
           <TemplateProvider>
             <TaskProvider>
               <TimeProvider>
-                <div className="min-h-screen bg-background text-foreground">
+                <div className="min-h-screen bg-background text-foreground pb-28">
                   <FocusStudioStarter />
-                  <PlanningChatbot />
+                  <PlannerBar />
                 </div>
               </TimeProvider>
             </TaskProvider>

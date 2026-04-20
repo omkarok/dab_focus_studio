@@ -137,7 +137,7 @@ function useLocalStorage<T>(key: string, initial: T) {
 }
 
 // Timer hook (Pomodoro)
-function usePomodoro(initialMode: "focus" | "break" = "focus") {
+function usePomodoro(initialMode: "focus" | "break" = "focus", onFocusComplete?: () => void) {
   const [mode, setMode] = useState<"focus" | "break">(initialMode);
   const [running, setRunning] = useState(false);
   const [focusMinutes, setFocusMinutes] = useState<25 | 50>(25);
@@ -165,6 +165,7 @@ function usePomodoro(initialMode: "focus" | "break" = "focus") {
 
   useEffect(() => {
     if (secondsLeft === 0) {
+      if (mode === "focus" && onFocusComplete) onFocusComplete();
       const next = mode === "focus" ? "break" : "focus";
       setMode(next);
       setSecondsLeft((next === "focus" ? focusMinutes : breakLength()) * 60);
@@ -366,7 +367,12 @@ export default function FocusStudioStarter() {
   const [editDue, setEditDue] = useState("");
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-  const timer = usePomodoro("focus");
+  const timer = usePomodoro("focus", () => {
+    // Auto-log a time entry when a Pomodoro focus session completes
+    if (selectedTaskId) {
+      timeTracking.logCompleted(selectedTaskId, activeProjectId, timer.focusMinutes, "Pomodoro session");
+    }
+  });
 
   // Derived
   const byCol = useMemo(() => {

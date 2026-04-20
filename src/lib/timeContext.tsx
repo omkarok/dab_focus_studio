@@ -40,6 +40,7 @@ interface TimeContextValue {
   elapsedMinutes: number; // live elapsed for active entry
   startTracking: (taskId: string, projectId: string, note?: string) => void;
   stopTracking: () => void;
+  logCompleted: (taskId: string, projectId: string, durationMinutes: number, note?: string) => void;
   getTaskTime: (taskId: string) => number;
   getProjectTime: (projectId: string) => number;
   getTodayTotal: () => number;
@@ -127,6 +128,24 @@ export function TimeProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const logCompleted = useCallback(
+    (taskId: string, projectId: string, durationMinutes: number, note?: string) => {
+      const now = new Date();
+      const startedAt = new Date(now.getTime() - durationMinutes * 60000).toISOString();
+      const entry: TimeEntry = {
+        id: uid(),
+        taskId,
+        projectId,
+        startedAt,
+        endedAt: now.toISOString(),
+        duration: durationMinutes,
+        note,
+      };
+      setEntries((prev) => [...prev, entry]);
+    },
+    [],
+  );
+
   const getTaskTime = useCallback(
     (taskId: string): number => {
       const taskEntries = entries.filter((e) => e.taskId === taskId);
@@ -184,6 +203,7 @@ export function TimeProvider({ children }: { children: React.ReactNode }) {
       elapsedMinutes,
       startTracking,
       stopTracking,
+      logCompleted,
       getTaskTime,
       getProjectTime,
       getTodayTotal,
@@ -195,6 +215,7 @@ export function TimeProvider({ children }: { children: React.ReactNode }) {
       elapsedMinutes,
       startTracking,
       stopTracking,
+      logCompleted,
       getTaskTime,
       getProjectTime,
       getTodayTotal,
