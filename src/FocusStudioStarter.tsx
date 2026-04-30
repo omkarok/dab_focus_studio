@@ -99,6 +99,7 @@ export type Task = {
   createdAt: string; // ISO
   completedAt?: string | null;
   projectId?: string;
+  assigneeId?: string;
 };
 
 export type Template = {

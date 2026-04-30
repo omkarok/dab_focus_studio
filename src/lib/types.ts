@@ -5,12 +5,9 @@
 
 import type { Task, Template, ColumnKey, Priority } from "@/FocusStudioStarter";
 
-// Re-export core types so consumers can import everything from one place
 export type { Task, Template, ColumnKey, Priority };
 
-// ---- New types for Supabase-backed features ----
-
-/** Authenticated user profile (maps to Supabase auth.users). */
+/** Authenticated user profile (maps to Supabase auth.users + consulting.profiles). */
 export type AuthUser = {
   id: string;
   email: string;
@@ -18,58 +15,112 @@ export type AuthUser = {
   avatarUrl?: string;
 };
 
-/** A consulting project that contains tasks and templates. */
+/** Public mirror of auth.users for member lookups. */
+export type Profile = {
+  id: string;
+  email: string;
+  name?: string;
+  avatarUrl?: string;
+  createdAt: string;
+};
+
+export type WorkspaceRole = "owner" | "admin" | "member";
+export type TeamRole = "lead" | "member";
+
+export type Workspace = {
+  id: string;
+  name: string;
+  slug: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type WorkspaceMember = {
+  workspaceId: string;
+  userId: string;
+  role: WorkspaceRole;
+  joinedAt: string;
+};
+
+export type Team = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  color?: string;
+  createdBy?: string;
+  createdAt: string;
+};
+
+export type TeamMember = {
+  teamId: string;
+  userId: string;
+  role: TeamRole;
+  joinedAt: string;
+};
+
 export type Project = {
   id: string;
+  teamId: string;
   name: string;
   client: string;
   color: string;
   ownerId: string;
   archived: boolean;
-  createdAt: string; // ISO
+  createdAt: string;
 };
 
-/** A member of a project with a specific role. */
 export type ProjectMember = {
   projectId: string;
   userId: string;
   role: "owner" | "editor" | "viewer";
-  invitedAt: string; // ISO
+  invitedAt: string;
 };
 
-/** A time-tracking entry linked to a task within a project. */
+export type Invitation = {
+  id: string;
+  workspaceId: string;
+  email: string;
+  role: WorkspaceRole;
+  teamIds: string[];
+  invitedBy?: string;
+  acceptedAt?: string;
+  acceptedBy?: string;
+  createdAt: string;
+};
+
 export type TimeEntry = {
   id: string;
   taskId: string;
   projectId: string;
   userId: string;
-  startedAt: string; // ISO
-  endedAt?: string; // ISO
+  startedAt: string;
+  endedAt?: string;
   duration: number; // minutes
   note?: string;
-  createdAt: string; // ISO
+  createdAt: string;
 };
 
-// ---- Sync adapter interface ----
-
 /**
- * SyncAdapter abstracts storage so the app can seamlessly switch
- * between localStorage (offline) and Supabase (cloud) backends.
+ * Membership state derived after sign-in. Drives the app's auth gate:
+ *   unknown        — still resolving (loading)
+ *   bootstrap      — authenticated, no memberships, but is the very first
+ *                    user → show "create your first workspace" UI
+ *   no-invitation  — authenticated, no memberships, not bootstrap → show
+ *                    "you haven't been invited" screen
+ *   member         — authenticated, has at least one workspace membership
  */
+export type MembershipState = "unknown" | "bootstrap" | "no-invitation" | "member";
+
+// ---- Sync adapter interface (legacy localStorage path) ----
+
 export interface SyncAdapter {
-  // Tasks
   loadTasks(projectId: string): Promise<Task[]>;
   saveTasks(projectId: string, tasks: Task[]): Promise<void>;
-
-  // Templates
   loadTemplates(projectId: string): Promise<Template[]>;
   saveTemplates(projectId: string, templates: Template[]): Promise<void>;
-
-  // Projects
   loadProjects(userId: string): Promise<Project[]>;
   saveProject(project: Project): Promise<void>;
-
-  // Time entries
   loadTimeEntries(projectId: string): Promise<TimeEntry[]>;
   saveTimeEntry(entry: TimeEntry): Promise<void>;
 }

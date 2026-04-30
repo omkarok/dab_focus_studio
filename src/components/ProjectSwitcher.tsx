@@ -25,7 +25,6 @@ export default function ProjectSwitcher() {
     setActiveProject,
     addProject,
     archiveProject,
-    getTaskCountForProject,
   } = useProjects();
 
   const [open, setOpen] = useState(false);
@@ -53,14 +52,18 @@ export default function ProjectSwitcher() {
   const activeProjects = projects.filter((p) => !p.archived);
   const archivedProjects = projects.filter((p) => p.archived);
 
-  const handleAddProject = () => {
+  const handleAddProject = async () => {
     if (!newName.trim()) return;
-    const created = addProject({
-      name: newName.trim(),
-      client: newClient.trim() || "Unknown",
-      color: newColor,
-    });
-    setActiveProject(created.id);
+    try {
+      const created = await addProject({
+        name: newName.trim(),
+        client: newClient.trim() || "Unknown",
+        color: newColor,
+      });
+      setActiveProject(created.id);
+    } catch (e) {
+      console.error("Failed to create project:", e);
+    }
     setNewName("");
     setNewClient("");
     setNewColor(PROJECT_COLORS[0]);
@@ -178,11 +181,11 @@ export default function ProjectSwitcher() {
                 key={project.id}
                 project={project}
                 isActive={project.id === activeProject.id}
-                taskCount={getTaskCountForProject(project.id)}
+                taskCount={0}
                 onSelect={() => handleSelectProject(project.id)}
                 onArchive={
                   project.id !== "default"
-                    ? () => archiveProject(project.id)
+                    ? () => { void archiveProject(project.id); }
                     : undefined
                 }
               />
@@ -210,7 +213,7 @@ export default function ProjectSwitcher() {
                       key={project.id}
                       project={project}
                       isActive={false}
-                      taskCount={getTaskCountForProject(project.id)}
+                      taskCount={0}
                       onSelect={() => handleSelectProject(project.id)}
                       archived
                     />
