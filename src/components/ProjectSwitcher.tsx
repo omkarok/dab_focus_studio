@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useProjects, type Project } from "@/lib/projectContext";
+import { db, supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const PROJECT_COLORS = [
   "#6366f1", // indigo
@@ -33,8 +34,50 @@ export default function ProjectSwitcher() {
   const [newClient, setNewClient] = useState("");
   const [newColor, setNewColor] = useState(PROJECT_COLORS[0]);
   const [showArchived, setShowArchived] = useState(false);
+  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Lazy-load active task counts when the dropdown opens, refresh on realtime
+  useEffect(() => {
+    if (!open || !isSupabaseConfigured() || projects.length === 0) return;
+    let cancelled = false;
+    const projectIds = projects.map((p) => p.id);
+
+    const fetchCounts = async () => {
+      try {
+        const { data, error } = await db
+          .from("tasks")
+          .select("project_id")
+          .eq("completed", false)
+          .in("project_id", projectIds);
+        if (error) throw error;
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        (data ?? []).forEach((r: any) => {
+          counts[r.project_id] = (counts[r.project_id] ?? 0) + 1;
+        });
+        setTaskCounts(counts);
+      } catch (e) {
+        console.error("Failed to load task counts:", e);
+      }
+    };
+    void fetchCounts();
+
+    const channel = supabase
+      .channel(`project-switcher-counts:${projectIds.join(",")}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "consulting", table: "tasks" },
+        () => void fetchCounts()
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [open, projects]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -181,7 +224,7 @@ export default function ProjectSwitcher() {
                 key={project.id}
                 project={project}
                 isActive={project.id === activeProject.id}
-                taskCount={0}
+                taskCount={taskCounts[project.id] ?? 0}
                 onSelect={() => handleSelectProject(project.id)}
                 onArchive={
                   project.id !== "default"
@@ -213,7 +256,7 @@ export default function ProjectSwitcher() {
                       key={project.id}
                       project={project}
                       isActive={false}
-                      taskCount={0}
+                      taskCount={taskCounts[project.id] ?? 0}
                       onSelect={() => handleSelectProject(project.id)}
                       archived
                     />

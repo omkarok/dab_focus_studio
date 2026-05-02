@@ -13,7 +13,7 @@ import React, {
   useState,
 } from "react";
 import type { Task } from "@/FocusStudioStarter";
-import { db, isSupabaseConfigured } from "@/lib/supabase";
+import { db, supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/lib/authContext";
 import { useProjects } from "@/lib/projectContext";
 
@@ -99,7 +99,16 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const prevTasksRef = useRef<Task[]>([]);
   const isLoadingRef = useRef<boolean>(true);
 
-  // Load when active project changes
+  // Apply a remote-originated change without re-persisting.
+  const applyRemoteChange = useCallback(
+    (next: Task[]) => {
+      prevTasksRef.current = next;
+      setTasksInternal(next);
+    },
+    []
+  );
+
+  // Load when active project changes + subscribe to realtime updates
   useEffect(() => {
     isLoadingRef.current = true;
     if (!useDb || activeProjectId === "default") {
@@ -134,10 +143,46 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) isLoadingRef.current = false;
       }
     })();
+
+    // Realtime: apply other users' changes without round-tripping
+    const channel = supabase
+      .channel(`tasks:project:${activeProjectId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "consulting",
+          table: "tasks",
+          filter: `project_id=eq.${activeProjectId}`,
+        },
+        (payload: any) => {
+          if (cancelled) return;
+          const current = prevTasksRef.current;
+          if (payload.eventType === "INSERT") {
+            const t = mapTaskFromDb(payload.new);
+            if (current.find((x) => x.id === t.id)) return;
+            applyRemoteChange([t, ...current]);
+          } else if (payload.eventType === "UPDATE") {
+            const t = mapTaskFromDb(payload.new);
+            const next = current.map((x) => (x.id === t.id ? t : x));
+            // No-op if our local copy already matches (echo of our own write)
+            if (JSON.stringify(next) === JSON.stringify(current)) return;
+            applyRemoteChange(next);
+          } else if (payload.eventType === "DELETE") {
+            const id = payload.old?.id;
+            if (!id) return;
+            if (!current.find((x) => x.id === id)) return;
+            applyRemoteChange(current.filter((x) => x.id !== id));
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       cancelled = true;
+      void supabase.removeChannel(channel);
     };
-  }, [activeProjectId, useDb]);
+  }, [activeProjectId, useDb, applyRemoteChange]);
 
   // Persist on change (diff-based for DB, full-write for localStorage)
   const persistChanges = useCallback(

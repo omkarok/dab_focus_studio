@@ -3,13 +3,12 @@
 // user as assignee, within the current workspace.
 // ============================================================
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { db, isSupabaseConfigured } from "@/lib/supabase";
+import { db, supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/lib/authContext";
 import { useWorkspace } from "@/lib/workspaceContext";
-import { useProjects } from "@/lib/projectContext";
 import type { Task, ColumnKey } from "@/FocusStudioStarter";
 import { Inbox, Clock, ListTodo } from "lucide-react";
 
@@ -46,9 +45,9 @@ function mapTask(r: any): Task {
 export function MyWorkView() {
   const { user } = useAuth();
   const { currentWorkspace, teams } = useWorkspace();
-  const { projects } = useProjects();
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const projectMapRef = useRef<Map<string, { name: string; color: string }>>(new Map());
 
   useEffect(() => {
     if (!isSupabaseConfigured() || !user || !currentWorkspace) {
@@ -56,33 +55,35 @@ export function MyWorkView() {
       setLoading(false);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const teamIds = teams.map((t) => t.id);
-        if (teamIds.length === 0) {
-          setTasks([]);
-          return;
-        }
+    const teamIds = teams.map((t) => t.id);
+    if (teamIds.length === 0) {
+      setTasks([]);
+      setLoading(false);
+      return;
+    }
 
-        // Find all projects in the workspace
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      try {
         const { data: projectsData, error: projErr } = await db
           .from("projects")
           .select("id, name, color")
           .in("team_id", teamIds);
         if (projErr) throw projErr;
         const projectIds = (projectsData ?? []).map((p: any) => p.id);
+        const pm = new Map<string, { name: string; color: string }>();
+        (projectsData ?? []).forEach((p: any) =>
+          pm.set(p.id, { name: p.name, color: p.color })
+        );
+        projectMapRef.current = pm;
+
         if (projectIds.length === 0) {
-          setTasks([]);
+          if (!cancelled) setTasks([]);
           return;
         }
-        const projMap = new Map<string, { name: string; color: string }>();
-        (projectsData ?? []).forEach((p: any) =>
-          projMap.set(p.id, { name: p.name, color: p.color })
-        );
 
-        // Find tasks assigned to me in those projects
         const { data: tasksData, error: tasksErr } = await db
           .from("tasks")
           .select("*")
@@ -94,7 +95,7 @@ export function MyWorkView() {
         if (cancelled) return;
         const enriched: TaskWithProject[] = (tasksData ?? []).map((row: any) => {
           const t = mapTask(row);
-          const proj = projMap.get(row.project_id);
+          const proj = pm.get(row.project_id);
           return {
             ...t,
             projectName: proj?.name ?? "Unknown",
@@ -109,11 +110,47 @@ export function MyWorkView() {
         if (!cancelled) setLoading(false);
       }
     })();
+
+    // Realtime: keep this view fresh when other users assign/unassign me
+    const channel = supabase
+      .channel(`my-work:${user.id}:ws:${currentWorkspace.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "consulting", table: "tasks" },
+        (payload: any) => {
+          if (cancelled) return;
+          setTasks((prev) => {
+            if (payload.eventType === "DELETE") {
+              const id = payload.old?.id;
+              return id ? prev.filter((t) => t.id !== id) : prev;
+            }
+            const row = payload.new;
+            if (!row) return prev;
+            const proj = projectMapRef.current.get(row.project_id);
+            // Only include if assigned to me
+            if (row.assignee_id !== user.id) {
+              return prev.filter((t) => t.id !== row.id);
+            }
+            const mapped: TaskWithProject = {
+              ...mapTask(row),
+              projectName: proj?.name ?? "Unknown",
+              projectColor: proj?.color ?? "#6366f1",
+            };
+            const idx = prev.findIndex((t) => t.id === mapped.id);
+            if (idx === -1) return [mapped, ...prev];
+            const copy = prev.slice();
+            copy[idx] = mapped;
+            return copy;
+          });
+        }
+      )
+      .subscribe();
+
     return () => {
       cancelled = true;
+      void supabase.removeChannel(channel);
     };
-    // We re-run on workspace + teams + projects change since assignment can shift.
-  }, [user, currentWorkspace, teams, projects]);
+  }, [user, currentWorkspace, teams]);
 
   const grouped = useMemo(() => {
     const m: Record<ColumnKey, TaskWithProject[]> = {

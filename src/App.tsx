@@ -3,7 +3,7 @@ import FocusStudioStarter from "./FocusStudioStarter";
 import PlannerBar from "./features/dailyPlanner/PlannerBar";
 import { TaskProvider } from "@/lib/taskContext";
 import { TemplateProvider } from "@/lib/templateContext";
-import { ProjectProvider } from "@/lib/projectContext";
+import { ProjectProvider, useProjects } from "@/lib/projectContext";
 import { TimeProvider } from "@/lib/timeContext";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { WorkspaceProvider, useWorkspace } from "@/lib/workspaceContext";
@@ -11,15 +11,34 @@ import { AuthGate } from "@/components/AuthGate";
 import WorkspaceTeamSwitcher from "@/components/WorkspaceTeamSwitcher";
 import { MembersPanel } from "@/components/MembersPanel";
 import { MyWorkView } from "@/components/MyWorkView";
+import { TeamTaskView } from "@/components/TeamTaskView";
+import { CreateFirstProject } from "@/components/CreateFirstProject";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, Inbox, Users, LogOut } from "lucide-react";
+import { LayoutGrid, Inbox, Users, Activity, LogOut } from "lucide-react";
 
-type View = "board" | "my-work" | "members";
+type View = "board" | "team" | "my-work" | "members";
 
 function AppShell() {
   const { user, signOut } = useAuth();
   const { currentWorkspace } = useWorkspace();
+  const { setActiveProject, projects, loading: projectsLoading } = useProjects();
   const [view, setView] = useState<View>("board");
+
+  const handleOpenTaskFromTeam = (projectId: string, _taskId: string) => {
+    setActiveProject(projectId);
+    setView("board");
+  };
+
+  // When in shared-workspace mode but no real projects exist, block the
+  // board and team views and force project creation. Otherwise the app
+  // silently falls back to a localStorage "default" project and tasks
+  // never reach teammates.
+  const needsFirstProject =
+    isSupabaseConfigured() &&
+    !!currentWorkspace &&
+    !projectsLoading &&
+    projects.length === 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-28">
@@ -31,6 +50,9 @@ function AppShell() {
           <nav className="flex items-center gap-1">
             <ViewTab active={view === "board"} onClick={() => setView("board")} icon={<LayoutGrid className="h-3.5 w-3.5" />}>
               Board
+            </ViewTab>
+            <ViewTab active={view === "team"} onClick={() => setView("team")} icon={<Activity className="h-3.5 w-3.5" />}>
+              Team
             </ViewTab>
             <ViewTab active={view === "my-work"} onClick={() => setView("my-work")} icon={<Inbox className="h-3.5 w-3.5" />}>
               My Work
@@ -61,11 +83,25 @@ function AppShell() {
         <>
           {!currentWorkspace ? (
             <div className="p-6 text-sm text-muted-foreground">No workspace selected.</div>
+          ) : needsFirstProject ? (
+            <CreateFirstProject />
           ) : (
             <>
               <FocusStudioStarter />
               <PlannerBar />
             </>
+          )}
+        </>
+      )}
+
+      {view === "team" && (
+        <>
+          {!currentWorkspace ? (
+            <div className="p-6 text-sm text-muted-foreground">No workspace selected.</div>
+          ) : needsFirstProject ? (
+            <CreateFirstProject />
+          ) : (
+            <TeamTaskView onOpenTask={handleOpenTaskFromTeam} />
           )}
         </>
       )}

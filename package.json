@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

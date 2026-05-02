@@ -70,6 +70,9 @@ import CalendarView from "@/components/CalendarView";
 import ViewToggle from "@/components/ViewToggle";
 import TimeTracker from "@/components/TimeTracker";
 import TimeReport from "@/components/TimeReport";
+import { AssigneePicker } from "@/components/AssigneePicker";
+import { useWorkspace } from "@/lib/workspaceContext";
+import { newUuid as uid } from "@/lib/utils";
 
 // ------------------------------------------------------------
 // AI Consulting Studio: Local task & project manager
@@ -108,8 +111,7 @@ export type Template = {
   columns?: ColumnKey[];
 };
 
-// Utils
-const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+// Utils — uid() must return a UUID; task.id maps to a Postgres uuid column.
 const isToday = (iso?: string | null) => {
   if (!iso) return false;
   const d = new Date(iso);
@@ -284,6 +286,13 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks, onSelect }: {
               </div>
             )}
           </div>
+          <div className="shrink-0" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+            <AssigneePicker
+              assigneeId={task.assigneeId}
+              onChange={(id) => onUpdate({ assigneeId: id })}
+              size="sm"
+            />
+          </div>
         </div>
         {/* Action row — shown on hover via CSS */}
         <div className="task-actions flex items-center gap-1.5 pt-1 border-t border-border/50">
@@ -342,7 +351,12 @@ export default function FocusStudioStarter() {
   const { tasks, setTasks, updateTask } = useTasks();
   const { templates, setTemplates } = useTemplates();
   const { activeProject, activeProjectId } = useProjects();
+  const { profiles } = useWorkspace();
   const timeTracking = useTimeTracking();
+  const assigneeLabel = (id: string): string => {
+    const p = profiles[id];
+    return p?.name ?? p?.email ?? "Unknown";
+  };
   const [theme, setTheme] = useLocalStorage<"light" | "dark" | "comfort">(THEME_KEY, "comfort");
   const [focusMode, setFocusMode] = useState(false);
   const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
@@ -915,6 +929,21 @@ export default function FocusStudioStarter() {
                       placeholder="Comma-separated"
                       className="h-9 text-xs"
                     />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Assignee</label>
+                    <div className="flex items-center gap-2 h-9 px-1">
+                      <AssigneePicker
+                        assigneeId={selectedTask.assigneeId}
+                        onChange={(id) => updateTask(selectedTask.id, { assigneeId: id })}
+                        size="md"
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {selectedTask.assigneeId
+                          ? assigneeLabel(selectedTask.assigneeId)
+                          : "Unassigned"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
