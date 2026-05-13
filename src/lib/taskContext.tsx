@@ -86,6 +86,8 @@ interface TaskContextValue {
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   updateTask: (id: string, patch: Partial<Task>) => void;
+  persistError: string | null;
+  clearPersistError: () => void;
 }
 
 const TaskContext = createContext<TaskContextValue | undefined>(undefined);
@@ -96,6 +98,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const useDb = isSupabaseConfigured();
 
   const [tasks, setTasksInternal] = useState<Task[]>([]);
+  const [persistError, setPersistError] = useState<string | null>(null);
+  const clearPersistError = useCallback(() => setPersistError(null), []);
   const prevTasksRef = useRef<Task[]>([]);
   const isLoadingRef = useRef<boolean>(true);
 
@@ -127,6 +131,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         return old && JSON.stringify(old) !== JSON.stringify(t);
       });
 
+      if (removed.length === 0 && added.length === 0 && changed.length === 0) return;
+
+      console.log(`[tasks] persisting — +${added.length} ~${changed.length} -${removed.length} project=${activeProjectId}`);
       try {
         if (removed.length > 0) {
           const { error } = await db
@@ -138,11 +145,18 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         const upserts = [...added, ...changed];
         if (upserts.length > 0) {
           const rows = upserts.map((t) => mapTaskToDb(t, activeProjectId, user?.id));
+          console.log("[tasks] upserting rows:", rows);
           const { error } = await db.from("tasks").upsert(rows, { onConflict: "id" });
           if (error) throw error;
         }
-      } catch (e) {
-        console.error("Failed to persist tasks:", e);
+        console.log("[tasks] persist OK");
+        setPersistError(null);
+      } catch (e: any) {
+        const msg = e?.message ?? String(e);
+        console.error("[tasks] persist FAILED:", e);
+        setPersistError(`Save failed: ${msg}. Open DevTools console for details.`);
+        // Fallback: keep a local copy so tasks survive the session
+        saveLocalTasks(activeProjectId, next);
       }
     },
     [useDb, activeProjectId, user]
@@ -176,16 +190,24 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) {
           // Tasks created while the fetch was in-flight: present in prevTasksRef
           // now, not in the start-snapshot, not already in the DB result.
-          const locallyAdded = prevTasksRef.current.filter(
+          const inFlight = prevTasksRef.current.filter(
             (t) =>
               !snapshotAtStart.find((s) => s.id === t.id) &&
               !dbRows.find((r) => r.id === t.id)
           );
-          const merged = [...locallyAdded, ...dbRows];
+          // Tasks saved to localStorage as a fallback during a prior failed persist.
+          const localFallback = loadLocalTasks(activeProjectId).filter(
+            (t) => !dbRows.find((r) => r.id === t.id)
+          );
+          const toRescue = [
+            ...inFlight,
+            ...localFallback.filter((t) => !inFlight.find((x) => x.id === t.id)),
+          ];
+          const merged = [...toRescue, ...dbRows];
           setTasksInternal(merged);
           prevTasksRef.current = merged;
-          // Persist the rescued tasks now that loading is done.
-          if (locallyAdded.length > 0) {
+          if (toRescue.length > 0) {
+            console.log(`[tasks] rescuing ${toRescue.length} locally-buffered task(s)`);
             void persistChanges(dbRows, merged);
           }
         }
@@ -259,7 +281,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   }, [setTasks]);
 
   return (
-    <TaskContext.Provider value={{ tasks, setTasks, updateTask }}>
+    <TaskContext.Provider value={{ tasks, setTasks, updateTask, persistError, clearPersistError }}>
       {children}
     </TaskContext.Provider>
   );

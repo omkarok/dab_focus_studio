@@ -348,7 +348,7 @@ function Column({ id, title, count, children }: { id: ColumnKey; title: string; 
 
 // --- Main Component ---
 export default function FocusStudioStarter() {
-  const { tasks, setTasks, updateTask } = useTasks();
+  const { tasks, setTasks, updateTask, persistError, clearPersistError } = useTasks();
   const { templates, setTemplates } = useTemplates();
   const { activeProject, activeProjectId } = useProjects();
   const { profiles } = useWorkspace();
@@ -541,6 +541,13 @@ export default function FocusStudioStarter() {
 
   return (
     <div className={`min-h-[100dvh] w-full ${comfort ? "comfort-bg" : "bg-background"}`}>
+      {/* Persist error banner */}
+      {persistError && (
+        <div className="sticky top-0 z-50 flex items-center gap-3 px-4 py-2 bg-red-600 text-white text-xs font-medium">
+          <span className="flex-1">{persistError}</span>
+          <button type="button" onClick={clearPersistError} className="shrink-0 underline hover:no-underline">Dismiss</button>
+        </div>
+      )}
       {/* ===== Top Bar ===== */}
       <div
         className="sticky top-0 z-30 backdrop-blur-md border-b border-border"
