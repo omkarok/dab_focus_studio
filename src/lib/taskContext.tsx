@@ -108,9 +108,53 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  // Persist on change (diff-based for DB, full-write for localStorage).
+  // Defined before the load effect so it can be included in the dep array.
+  const persistChanges = useCallback(
+    async (prev: Task[], next: Task[]) => {
+      if (!useDb || activeProjectId === "default") {
+        saveLocalTasks(activeProjectId, next);
+        return;
+      }
+
+      const prevById = new Map(prev.map((t) => [t.id, t]));
+      const nextById = new Map(next.map((t) => [t.id, t]));
+
+      const removed = prev.filter((t) => !nextById.has(t.id));
+      const added = next.filter((t) => !prevById.has(t.id));
+      const changed = next.filter((t) => {
+        const old = prevById.get(t.id);
+        return old && JSON.stringify(old) !== JSON.stringify(t);
+      });
+
+      try {
+        if (removed.length > 0) {
+          const { error } = await db
+            .from("tasks")
+            .delete()
+            .in("id", removed.map((t) => t.id));
+          if (error) throw error;
+        }
+        const upserts = [...added, ...changed];
+        if (upserts.length > 0) {
+          const rows = upserts.map((t) => mapTaskToDb(t, activeProjectId, user?.id));
+          const { error } = await db.from("tasks").upsert(rows, { onConflict: "id" });
+          if (error) throw error;
+        }
+      } catch (e) {
+        console.error("Failed to persist tasks:", e);
+      }
+    },
+    [useDb, activeProjectId, user]
+  );
+
   // Load when active project changes + subscribe to realtime updates
   useEffect(() => {
     isLoadingRef.current = true;
+    // Snapshot the tasks already in memory before this fetch starts so we can
+    // detect tasks the user adds during the async window and rescue them.
+    const snapshotAtStart = prevTasksRef.current.slice();
+
     if (!useDb || activeProjectId === "default") {
       const local = loadLocalTasks(activeProjectId);
       setTasksInternal(local);
@@ -128,10 +172,22 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           .eq("project_id", activeProjectId)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const rows = (data ?? []).map(mapTaskFromDb);
+        const dbRows = (data ?? []).map(mapTaskFromDb);
         if (!cancelled) {
-          setTasksInternal(rows);
-          prevTasksRef.current = rows;
+          // Tasks created while the fetch was in-flight: present in prevTasksRef
+          // now, not in the start-snapshot, not already in the DB result.
+          const locallyAdded = prevTasksRef.current.filter(
+            (t) =>
+              !snapshotAtStart.find((s) => s.id === t.id) &&
+              !dbRows.find((r) => r.id === t.id)
+          );
+          const merged = [...locallyAdded, ...dbRows];
+          setTasksInternal(merged);
+          prevTasksRef.current = merged;
+          // Persist the rescued tasks now that loading is done.
+          if (locallyAdded.length > 0) {
+            void persistChanges(dbRows, merged);
+          }
         }
       } catch (e) {
         console.error("Failed to load tasks:", e);
@@ -165,7 +221,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           } else if (payload.eventType === "UPDATE") {
             const t = mapTaskFromDb(payload.new);
             const next = current.map((x) => (x.id === t.id ? t : x));
-            // No-op if our local copy already matches (echo of our own write)
             if (JSON.stringify(next) === JSON.stringify(current)) return;
             applyRemoteChange(next);
           } else if (payload.eventType === "DELETE") {
@@ -182,52 +237,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       void supabase.removeChannel(channel);
     };
-  }, [activeProjectId, useDb, applyRemoteChange]);
-
-  // Persist on change (diff-based for DB, full-write for localStorage)
-  const persistChanges = useCallback(
-    async (prev: Task[], next: Task[]) => {
-      if (!useDb || activeProjectId === "default") {
-        saveLocalTasks(activeProjectId, next);
-        return;
-      }
-
-      const prevById = new Map(prev.map((t) => [t.id, t]));
-      const nextById = new Map(next.map((t) => [t.id, t]));
-
-      // Removed: in prev but not in next
-      const removed = prev.filter((t) => !nextById.has(t.id));
-      // Added: in next but not in prev
-      const added = next.filter((t) => !prevById.has(t.id));
-      // Changed: in both, but JSON-different
-      const changed = next.filter((t) => {
-        const old = prevById.get(t.id);
-        return old && JSON.stringify(old) !== JSON.stringify(t);
-      });
-
-      try {
-        if (removed.length > 0) {
-          const { error } = await db
-            .from("tasks")
-            .delete()
-            .in(
-              "id",
-              removed.map((t) => t.id)
-            );
-          if (error) throw error;
-        }
-        const upserts = [...added, ...changed];
-        if (upserts.length > 0) {
-          const rows = upserts.map((t) => mapTaskToDb(t, activeProjectId, user?.id));
-          const { error } = await db.from("tasks").upsert(rows, { onConflict: "id" });
-          if (error) throw error;
-        }
-      } catch (e) {
-        console.error("Failed to persist tasks:", e);
-      }
-    },
-    [useDb, activeProjectId, user]
-  );
+  }, [activeProjectId, useDb, applyRemoteChange, persistChanges]);
 
   const setTasks: React.Dispatch<React.SetStateAction<Task[]>> = useCallback(
     (action) => {
