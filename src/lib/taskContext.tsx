@@ -16,8 +16,10 @@ import type { Task } from "@/FocusStudioStarter";
 import { db, supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/lib/authContext";
 import { useProjects } from "@/lib/projectContext";
+import { isUuid, newUuid } from "@/lib/utils";
 
 const LEGACY_KEY = "focus_studio_state_v1";
+const DEFAULT_KEY = "acs_tasks_default";
 const taskKeyForProject = (projectId: string) => `acs_tasks_${projectId}`;
 
 function loadLocalTasks(projectId: string): Task[] {
@@ -40,6 +42,62 @@ function loadLocalTasks(projectId: string): Task[] {
 function saveLocalTasks(projectId: string, tasks: Task[]): void {
   try {
     localStorage.setItem(taskKeyForProject(projectId), JSON.stringify(tasks));
+  } catch {
+    /* ignore */
+  }
+}
+
+// Tasks created while activeProjectId was still "default" (the brief window
+// after sign-in but before the projects list resolves) are saved under
+// acs_tasks_default. Once a real project is active we need to drag those —
+// plus any pre-Supabase legacy tasks — into it; otherwise they look "lost"
+// after reload because the per-project load only reads the project's own key.
+function loadOrphanedDefaultTasks(): Task[] {
+  const out: Task[] = [];
+  const seen = new Set<string>();
+  try {
+    const raw = localStorage.getItem(DEFAULT_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        for (const t of arr as Task[]) {
+          if (t?.id && !seen.has(t.id)) {
+            seen.add(t.id);
+            out.push(t);
+          }
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        for (const t of arr as Task[]) {
+          if (t?.id && !seen.has(t.id)) {
+            seen.add(t.id);
+            out.push(t);
+          }
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return out;
+}
+
+function clearOrphanedDefaultTasks(): void {
+  try {
+    localStorage.removeItem(DEFAULT_KEY);
+  } catch {
+    /* ignore */
+  }
+  try {
+    localStorage.removeItem(LEGACY_KEY);
   } catch {
     /* ignore */
   }
@@ -179,6 +237,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
     (async () => {
+      let dbRows: Task[] | null = null;
       try {
         const { data, error } = await db
           .from("tasks")
@@ -186,39 +245,69 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           .eq("project_id", activeProjectId)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const dbRows = (data ?? []).map(mapTaskFromDb);
-        if (!cancelled) {
-          // Tasks created while the fetch was in-flight: present in prevTasksRef
-          // now, not in the start-snapshot, not already in the DB result.
-          const inFlight = prevTasksRef.current.filter(
-            (t) =>
-              !snapshotAtStart.find((s) => s.id === t.id) &&
-              !dbRows.find((r) => r.id === t.id)
-          );
-          // Tasks saved to localStorage as a fallback during a prior failed persist.
-          const localFallback = loadLocalTasks(activeProjectId).filter(
-            (t) => !dbRows.find((r) => r.id === t.id)
-          );
-          const toRescue = [
-            ...inFlight,
-            ...localFallback.filter((t) => !inFlight.find((x) => x.id === t.id)),
-          ];
-          const merged = [...toRescue, ...dbRows];
-          setTasksInternal(merged);
-          prevTasksRef.current = merged;
-          if (toRescue.length > 0) {
-            console.log(`[tasks] rescuing ${toRescue.length} locally-buffered task(s)`);
-            void persistChanges(dbRows, merged);
-          }
-        }
+        dbRows = (data ?? []).map(mapTaskFromDb);
       } catch (e) {
         console.error("Failed to load tasks:", e);
-        if (!cancelled) {
-          setTasksInternal([]);
-          prevTasksRef.current = [];
+      }
+      if (cancelled) return;
+
+      // Build the rescue set from three sources, deduped by id:
+      //   1. in-flight: tasks added to memory while the fetch was running
+      //   2. per-project localStorage fallback: from prior failed persists
+      //   3. orphaned "default" / legacy keys: tasks saved before
+      //      activeProjectId resolved to a real UUID
+      // On fetch failure dbRows is null — we still want to surface whatever
+      // we have locally instead of wiping state.
+      const dbList = dbRows ?? [];
+      const dbIds = new Set(dbList.map((r) => r.id));
+
+      const inFlight = prevTasksRef.current.filter(
+        (t) => !snapshotAtStart.find((s) => s.id === t.id) && !dbIds.has(t.id)
+      );
+      const localFallback = loadLocalTasks(activeProjectId).filter(
+        (t) => !dbIds.has(t.id)
+      );
+      const orphanedDefaults = loadOrphanedDefaultTasks().filter(
+        (t) => !dbIds.has(t.id)
+      );
+
+      const seen = new Set<string>(dbIds);
+      const toRescue: Task[] = [];
+      for (const t of [...inFlight, ...localFallback, ...orphanedDefaults]) {
+        if (!t) continue;
+        // Pre-UUID legacy ids are base-36 strings; the DB column is uuid
+        // and would 22P02 the upsert. Regenerate them on rescue.
+        const id = isUuid(t.id) ? t.id : newUuid();
+        if (seen.has(id)) continue;
+        seen.add(id);
+        // Re-stamp the projectId so the rescue upsert lands in the right project.
+        toRescue.push({ ...t, id, projectId: activeProjectId });
+      }
+
+      const merged = [...toRescue, ...dbList];
+      setTasksInternal(merged);
+      prevTasksRef.current = merged;
+      isLoadingRef.current = false;
+
+      if (toRescue.length > 0) {
+        if (dbRows !== null) {
+          // Load succeeded — push the rescue tasks to the DB. On success,
+          // clear the orphaned-default keys so we don't keep migrating the
+          // same rows. On failure, persistChanges will already have written
+          // them to the per-project localStorage fallback.
+          console.log(`[tasks] rescuing ${toRescue.length} locally-buffered task(s)`);
+          void (async () => {
+            await persistChanges(dbList, merged);
+            if (orphanedDefaults.length > 0) clearOrphanedDefaultTasks();
+          })();
+        } else {
+          // Load failed — don't retry the DB write (it'd just fail again),
+          // but mirror the full set to per-project localStorage so the
+          // in-flight tasks survive a reload. The orphaned-default keys are
+          // intentionally left in place until at least one successful load.
+          console.log(`[tasks] load failed; mirroring ${merged.length} task(s) to local fallback`);
+          saveLocalTasks(activeProjectId, merged);
         }
-      } finally {
-        if (!cancelled) isLoadingRef.current = false;
       }
     })();
 
