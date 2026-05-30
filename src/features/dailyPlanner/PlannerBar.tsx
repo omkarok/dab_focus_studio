@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, Send, Sparkles, Sun, X, Trash2, Loader2, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, newUuid } from "@/lib/utils";
 import { useTasks } from "@/lib/taskContext";
 import type { ColumnKey, Priority, Task } from "@/FocusStudioStarter";
 import { useVoiceRecorder } from "./useVoiceRecorder";
@@ -17,7 +17,10 @@ const GUIDED_QUESTIONS = [
   "Anything else to capture? (or say 'done' to finish)",
 ];
 
-const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+// Task ids map to a Postgres uuid column; a base-36 string would 22P02 the
+// insert, drop the task to the localStorage fallback, and get re-rescued (and
+// duplicated) on every reload. Always mint a real UUID.
+const uid = newUuid;
 
 const COLUMN_LABEL: Record<ColumnKey, string> = {
   now: "Now",

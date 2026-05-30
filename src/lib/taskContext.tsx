@@ -47,6 +47,17 @@ function saveLocalTasks(projectId: string, tasks: Task[]): void {
   }
 }
 
+// Drop the per-project localStorage fallback. Called once a rescue has been
+// successfully written to the DB, so the same buffered rows aren't re-rescued
+// (and re-inserted under fresh UUIDs) on every subsequent reload.
+function clearLocalTasks(projectId: string): void {
+  try {
+    localStorage.removeItem(taskKeyForProject(projectId));
+  } catch {
+    /* ignore */
+  }
+}
+
 // Tasks created while activeProjectId was still "default" (the brief window
 // after sign-in but before the projects list resolves) are saved under
 // acs_tasks_default. Once a real project is active we need to drag those —
@@ -173,10 +184,10 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   // Persist on change (diff-based for DB, full-write for localStorage).
   // Defined before the load effect so it can be included in the dep array.
   const persistChanges = useCallback(
-    async (prev: Task[], next: Task[]) => {
+    async (prev: Task[], next: Task[]): Promise<boolean> => {
       if (!useDb || activeProjectId === "default") {
         saveLocalTasks(activeProjectId, next);
-        return;
+        return true;
       }
 
       const prevById = new Map(prev.map((t) => [t.id, t]));
@@ -189,7 +200,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         return old && JSON.stringify(old) !== JSON.stringify(t);
       });
 
-      if (removed.length === 0 && added.length === 0 && changed.length === 0) return;
+      if (removed.length === 0 && added.length === 0 && changed.length === 0) return true;
 
       console.log(`[tasks] persisting — +${added.length} ~${changed.length} -${removed.length} project=${activeProjectId}`);
       try {
@@ -209,12 +220,14 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         }
         console.log("[tasks] persist OK");
         setPersistError(null);
+        return true;
       } catch (e: any) {
         const msg = e?.message ?? String(e);
         console.error("[tasks] persist FAILED:", e);
         setPersistError(`Save failed: ${msg}. Open DevTools console for details.`);
         // Fallback: keep a local copy so tasks survive the session
         saveLocalTasks(activeProjectId, next);
+        return false;
       }
     },
     [useDb, activeProjectId, user]
@@ -271,10 +284,19 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         (t) => !dbIds.has(t.id)
       );
 
+      // Content signature of rows already in the DB. A buffered task whose id
+      // was regenerated during a prior rescue keeps its original (non-matching)
+      // id in localStorage, so an id-only check would let it be re-inserted as
+      // a fresh duplicate on every reload. Matching on title + creation time
+      // recognises the existing DB twin and skips it.
+      const sigOf = (t: Task) => `${t.title} ${t.createdAt}`;
+      const dbSig = new Set(dbList.map(sigOf));
+
       const seen = new Set<string>(dbIds);
       const toRescue: Task[] = [];
       for (const t of [...inFlight, ...localFallback, ...orphanedDefaults]) {
         if (!t) continue;
+        if (dbSig.has(sigOf(t))) continue;
         // Pre-UUID legacy ids are base-36 strings; the DB column is uuid
         // and would 22P02 the upsert. Regenerate them on rescue.
         const id = isUuid(t.id) ? t.id : newUuid();
@@ -289,25 +311,37 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       prevTasksRef.current = merged;
       isLoadingRef.current = false;
 
-      if (toRescue.length > 0) {
-        if (dbRows !== null) {
-          // Load succeeded — push the rescue tasks to the DB. On success,
-          // clear the orphaned-default keys so we don't keep migrating the
-          // same rows. On failure, persistChanges will already have written
-          // them to the per-project localStorage fallback.
+      if (dbRows !== null) {
+        // Load succeeded — the DB is now the source of truth for this project.
+        if (toRescue.length > 0) {
+          // Push the rescue tasks to the DB. Only once that write is confirmed
+          // do we drop the local buffers that fed it — otherwise the same rows
+          // would be re-rescued (under fresh UUIDs) on every reload, which is
+          // exactly what made "Now" tasks multiply on refresh.
           console.log(`[tasks] rescuing ${toRescue.length} locally-buffered task(s)`);
           void (async () => {
-            await persistChanges(dbList, merged);
-            if (orphanedDefaults.length > 0) clearOrphanedDefaultTasks();
+            const ok = await persistChanges(dbList, merged);
+            if (ok) {
+              clearLocalTasks(activeProjectId);
+              if (orphanedDefaults.length > 0) clearOrphanedDefaultTasks();
+            }
+            // If the write failed, persistChanges already mirrored `merged` to
+            // the per-project fallback; leave the buffers in place to retry.
           })();
         } else {
-          // Load failed — don't retry the DB write (it'd just fail again),
-          // but mirror the full set to per-project localStorage so the
-          // in-flight tasks survive a reload. The orphaned-default keys are
-          // intentionally left in place until at least one successful load.
-          console.log(`[tasks] load failed; mirroring ${merged.length} task(s) to local fallback`);
-          saveLocalTasks(activeProjectId, merged);
+          // Nothing to rescue. Any per-project fallback / orphaned-default keys
+          // still on disk are stale copies of rows already in the DB; clear them
+          // so they can never resurface as duplicates later.
+          if (localFallback.length > 0) clearLocalTasks(activeProjectId);
+          if (orphanedDefaults.length > 0) clearOrphanedDefaultTasks();
         }
+      } else if (toRescue.length > 0) {
+        // Load failed — don't retry the DB write (it'd just fail again),
+        // but mirror the full set to per-project localStorage so the
+        // in-flight tasks survive a reload. The orphaned-default keys are
+        // intentionally left in place until at least one successful load.
+        console.log(`[tasks] load failed; mirroring ${merged.length} task(s) to local fallback`);
+        saveLocalTasks(activeProjectId, merged);
       }
     })();
 

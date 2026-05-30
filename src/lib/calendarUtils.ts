@@ -89,6 +89,12 @@ export function groupTasksByDate(
     }
 
     const taskDate = new Date(task.due);
+    if (Number.isNaN(taskDate.getTime())) {
+      // Malformed due date — toDateKey would yield "NaN-NaN-NaN" and the task
+      // would vanish from the calendar entirely. Treat it as unscheduled.
+      map.get("unscheduled")!.push(task);
+      continue;
+    }
     const key = toDateKey(taskDate);
     const bucket = map.get(key);
     if (bucket) {

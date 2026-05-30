@@ -9,6 +9,9 @@ export function useVoiceRecorder() {
   const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  // Resolver for an in-flight stop() promise, so cancel() can settle it
+  // instead of leaving the awaiting caller hung forever.
+  const pendingStopRef = useRef<((text: string) => void) | null>(null);
 
   const isSupported =
     typeof navigator !== "undefined" &&
@@ -44,11 +47,16 @@ export function useVoiceRecorder() {
     new Promise((resolve) => {
       const mr = mediaRecorderRef.current;
       if (!mr) return resolve("");
+      const settle = (text: string) => {
+        pendingStopRef.current = null;
+        resolve(text);
+      };
+      pendingStopRef.current = settle;
       mr.onstop = async () => {
         mr.stream.getTracks().forEach((t) => t.stop());
         setRecording(false);
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        if (blob.size === 0) return resolve("");
+        if (blob.size === 0) return settle("");
         setTranscribing(true);
         try {
           const form = new FormData();
@@ -61,10 +69,10 @@ export function useVoiceRecorder() {
           });
           if (!res.ok) throw new Error(`Transcription failed (${res.status})`);
           const data = await res.json();
-          resolve((data.text || "").trim());
+          settle((data.text || "").trim());
         } catch (err: any) {
           setError(err?.message || "Transcription failed.");
-          resolve("");
+          settle("");
         } finally {
           setTranscribing(false);
         }
@@ -79,6 +87,9 @@ export function useVoiceRecorder() {
       mr.stop();
       mr.stream.getTracks().forEach((t) => t.stop());
     }
+    // Settle any stop() promise that was awaiting onstop — otherwise its caller
+    // hangs forever, since we just cleared the onstop handler that would resolve it.
+    pendingStopRef.current?.("");
     setRecording(false);
     setTranscribing(false);
     chunksRef.current = [];

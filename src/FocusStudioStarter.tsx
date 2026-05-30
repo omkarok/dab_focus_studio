@@ -474,6 +474,14 @@ export default function FocusStudioStarter() {
   const applyTemplate = (tplName: string) => {
     const tpl = templates.find((t) => t.name === tplName);
     if (!tpl) return;
+    // Applying a template replaces the entire board (and deletes those tasks
+    // from the DB for everyone on a shared project). Confirm before discarding
+    // existing work so an accidental dropdown change can't wipe it out.
+    if (tasks.length > 0 && !window.confirm(
+      `Apply "${tplName}"? This replaces all ${tasks.length} task(s) currently on this board.`
+    )) {
+      return;
+    }
     const cloned = tpl.tasks.map((t) => ({ ...t, id: uid(), createdAt: new Date().toISOString(), completed: false, completedAt: null }));
     setTasks(cloned);
     setActiveTemplate(tplName);
