@@ -272,9 +272,17 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       );
 
       const seen = new Set<string>(dbIds);
+      // Dedup on the ORIGINAL id as well. The same buffered task can appear in
+      // more than one source (e.g. in-flight AND the localStorage fallback);
+      // since non-UUID ids are regenerated below, keying only on the new id
+      // would let the same task through twice with two different UUIDs and
+      // insert two copies in a single load.
+      const seenOriginal = new Set<string>();
       const toRescue: Task[] = [];
       for (const t of [...inFlight, ...localFallback, ...orphanedDefaults]) {
-        if (!t) continue;
+        if (!t?.id) continue;
+        if (seenOriginal.has(t.id)) continue;
+        seenOriginal.add(t.id);
         // Pre-UUID legacy ids are base-36 strings; the DB column is uuid
         // and would 22P02 the upsert. Regenerate them on rescue.
         const id = isUuid(t.id) ? t.id : newUuid();
@@ -299,6 +307,14 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           void (async () => {
             await persistChanges(dbList, merged);
             if (orphanedDefaults.length > 0) clearOrphanedDefaultTasks();
+            // Reconcile the per-project fallback to the canonical merged set.
+            // Without this, a buffered task (e.g. one whose original id wasn't
+            // a UUID) keeps failing the `!dbIds.has(id)` filter on every load
+            // and is rescued+re-inserted again and again — the source of the
+            // repeated/duplicate tasks. Rewriting the fallback to `merged`
+            // (all now carry DB-backed UUIDs) means the next load filters them
+            // out instead of duplicating them.
+            saveLocalTasks(activeProjectId, merged);
           })();
         } else {
           // Load failed — don't retry the DB write (it'd just fail again),

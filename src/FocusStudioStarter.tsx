@@ -60,6 +60,11 @@ import {
   LayoutGrid,
   HelpCircle,
   Zap,
+  CheckSquare,
+  Square,
+  MinusSquare,
+  Copy,
+  X,
 } from "lucide-react";
 import { useTasks } from "@/lib/taskContext";
 import { useTemplates, DEFAULT_COLUMNS } from "@/lib/templateContext";
@@ -118,6 +123,30 @@ const isToday = (iso?: string | null) => {
   const t = new Date();
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
 };
+
+// Find redundant tasks: same normalized title within the same lane. Returns
+// the ids of every copy EXCEPT the earliest-created one in each group, so the
+// original is preserved and only the duplicates are surfaced for cleanup.
+function computeDuplicateIds(tasks: Task[]): string[] {
+  const groups = new Map<string, Task[]>();
+  for (const t of tasks) {
+    const title = t.title.trim().toLowerCase();
+    if (!title) continue;
+    const key = `${t.status}::${title}`;
+    const arr = groups.get(key);
+    if (arr) arr.push(t);
+    else groups.set(key, [t]);
+  }
+  const redundant: string[] = [];
+  for (const arr of groups.values()) {
+    if (arr.length <= 1) continue;
+    const sorted = [...arr].sort((a, b) =>
+      (a.createdAt ?? "") < (b.createdAt ?? "") ? -1 : 1
+    );
+    for (const t of sorted.slice(1)) redundant.push(t.id);
+  }
+  return redundant;
+}
 
 // Local storage helpers
 const THEME_KEY = "focus_studio_theme_v1";
@@ -220,12 +249,15 @@ const COLUMN_CONFIG: Record<ColumnKey, { label: string; color: string; emptyText
 };
 
 // --- Task Card ---
-function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks, onSelect }: {
+function TaskCard({ task, selected, onToggleSelect, onUpdate, onMove, onGenerateSubtasks, onSelect, onDelete }: {
   task: Task;
+  selected?: boolean;
+  onToggleSelect?: (taskId: string) => void;
   onUpdate: (patch: Partial<Task>) => void;
   onMove: (to: ColumnKey) => void;
   onGenerateSubtasks?: (task: Task) => void;
   onSelect?: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -242,8 +274,19 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks, onSelect }: {
       {...listeners}
       onClick={() => onSelect?.(task.id)}
     >
-      <div className="task-card mb-2 rounded-xl border border-border bg-card p-3 space-y-1.5">
+      <div className={`task-card mb-2 rounded-xl border p-3 space-y-1.5 ${selected ? "border-accent ring-1 ring-accent bg-accent/5" : "border-border bg-card"}`}>
         <div className="flex items-start gap-2">
+          {onToggleSelect ? (
+            <button
+              aria-label={selected ? "Deselect task" : "Select task"}
+              aria-pressed={selected}
+              onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className={`mt-0.5 shrink-0 rounded border w-5 h-5 flex items-center justify-center transition-colors ${selected ? "bg-accent text-accent-foreground border-accent" : "border-muted-foreground/30 hover:border-accent"}`}
+            >
+              {selected ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5 opacity-40" />}
+            </button>
+          ) : null}
           <button
             aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
             onClick={(e) => {
@@ -254,6 +297,7 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks, onSelect }: {
                 status: !task.completed ? "done" : task.status,
               });
             }}
+            onPointerDown={(e) => e.stopPropagation()}
             className={`mt-0.5 shrink-0 rounded-full border w-5 h-5 flex items-center justify-center transition-colors ${task.completed ? "bg-emerald-500 text-white border-emerald-500" : "border-muted-foreground/30 hover:border-accent"}`}
           >
             {task.completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
@@ -316,6 +360,18 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks, onSelect }: {
               <Sparkles className="h-3 w-3 mr-1" />AI
             </Button>
           ) : null}
+          {onDelete ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs ml-auto text-red-500 hover:text-red-600 hover:bg-red-500/10"
+              aria-label="Delete task"
+              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          ) : null}
         </div>
       </div>
     </motion.div>
@@ -323,7 +379,14 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks, onSelect }: {
 }
 
 // --- Column ---
-function Column({ id, title, count, children }: { id: ColumnKey; title: string; count: number; children: React.ReactNode }) {
+function Column({ id, title, count, selectState, onToggleSelectAll, children }: {
+  id: ColumnKey;
+  title: string;
+  count: number;
+  selectState?: "none" | "some" | "all";
+  onToggleSelectAll?: (id: ColumnKey) => void;
+  children: React.ReactNode;
+}) {
   const { setNodeRef } = useDroppable({ id });
   const config = COLUMN_CONFIG[id];
   const isNow = id === "now";
@@ -331,6 +394,24 @@ function Column({ id, title, count, children }: { id: ColumnKey; title: string; 
   return (
     <div ref={setNodeRef} className="flex-1 min-w-[240px]">
       <div className="flex items-center gap-2 mb-2 px-1">
+        {onToggleSelectAll && count > 0 ? (
+          <button
+            type="button"
+            aria-label={selectState === "all" ? `Deselect all in ${title}` : `Select all in ${title}`}
+            aria-pressed={selectState === "all"}
+            title={selectState === "all" ? "Deselect all in lane" : "Select all in lane"}
+            onClick={() => onToggleSelectAll(id)}
+            className={`shrink-0 rounded border w-4 h-4 flex items-center justify-center transition-colors ${selectState === "none" ? "border-muted-foreground/30 hover:border-accent text-muted-foreground/40" : "border-accent text-accent"}`}
+          >
+            {selectState === "all" ? (
+              <CheckSquare className="h-3 w-3" />
+            ) : selectState === "some" ? (
+              <MinusSquare className="h-3 w-3" />
+            ) : (
+              <Square className="h-3 w-3" />
+            )}
+          </button>
+        ) : null}
         <h3 className={`text-xs font-semibold tracking-wider uppercase ${config.color}`}>{title}</h3>
         <span className="text-[10px] font-medium text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">{count}</span>
       </div>
@@ -362,6 +443,8 @@ export default function FocusStudioStarter() {
   const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  // Multi-select for bulk actions (delete / move / mark done / dedupe)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [quickTitle, setQuickTitle] = useState("");
   const [quickPriority, setQuickPriority] = useState<Priority>("P1");
   const [quickTarget, setQuickTarget] = useState<ColumnKey>("now");
@@ -402,11 +485,21 @@ export default function FocusStudioStarter() {
   const completedToday = useMemo(() => tasks.filter((t) => t.completed && isToday(t.completedAt)).length, [tasks]);
   const progressPct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
   const taskNames = useMemo(() => new Map(tasks.map((t) => [t.id, t.title])), [tasks]);
+  // Redundant tasks (same title within a lane) — ids of every copy but the
+  // earliest. Surfaced as a one-click cleanup, never auto-deleted.
+  const duplicateIds = useMemo(() => computeDuplicateIds(tasks), [tasks]);
+  const selectDuplicates = () => setSelectedIds(new Set(duplicateIds));
 
   useEffect(() => {
     document.documentElement.classList.remove("light", "dark");
     document.documentElement.classList.add(theme === "dark" ? "dark" : "light");
   }, [theme]);
+
+  // Drop any selection when the active project changes — the selected ids
+  // belong to the previous project's tasks and would be stale here.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [activeProjectId]);
 
   // Sync edit fields when selected task changes
   const selectedTask = useMemo(() => tasks.find((t) => t.id === selectedTaskId) || null, [tasks, selectedTaskId]);
@@ -448,10 +541,74 @@ export default function FocusStudioStarter() {
   };
 
   const moveTask = (id: string, to: ColumnKey) => updateTask(id, { status: to });
-  const removeTask = (id: string) => {
-    setTasks((x) => x.filter((t) => t.id !== id));
-    setTaskDialogOpen(false);
-    setSelectedTaskId(null);
+
+  // Remove one or many tasks in a single state update, keeping selection and
+  // the open detail dialog in sync.
+  const removeTasks = (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idset = new Set(ids);
+    setTasks((x) => x.filter((t) => !idset.has(t.id)));
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+    if (selectedTaskId && idset.has(selectedTaskId)) {
+      setTaskDialogOpen(false);
+      setSelectedTaskId(null);
+    }
+  };
+  const removeTask = (id: string) => removeTasks([id]);
+
+  // ----- Bulk selection helpers -----
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const laneSelectState = (colId: ColumnKey): "none" | "some" | "all" => {
+    const ids = byCol[colId].map((t) => t.id);
+    if (ids.length === 0) return "none";
+    let sel = 0;
+    for (const id of ids) if (selectedIds.has(id)) sel++;
+    if (sel === 0) return "none";
+    return sel === ids.length ? "all" : "some";
+  };
+  const toggleSelectLane = (colId: ColumnKey) => {
+    const ids = byCol[colId].map((t) => t.id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.length > 0 && ids.every((id) => next.has(id));
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+  const selectedCount = selectedIds.size;
+
+  const bulkDelete = () => {
+    if (selectedCount === 0) return;
+    if (confirm(`Delete ${selectedCount} selected task${selectedCount === 1 ? "" : "s"}?`)) {
+      removeTasks([...selectedIds]);
+    }
+  };
+  const bulkMove = (to: ColumnKey) => {
+    if (selectedCount === 0) return;
+    const idset = new Set(selectedIds);
+    setTasks((x) => x.map((t) => (idset.has(t.id) ? { ...t, status: to } : t)));
+    clearSelection();
+  };
+  const bulkMarkDone = () => {
+    if (selectedCount === 0) return;
+    const idset = new Set(selectedIds);
+    const now = new Date().toISOString();
+    setTasks((x) => x.map((t) => (idset.has(t.id) ? { ...t, completed: true, completedAt: now, status: "done" } : t)));
+    clearSelection();
   };
 
   const generateSubtasksFor = async (task: Task) => {
@@ -521,17 +678,27 @@ export default function FocusStudioStarter() {
 
   // Helper to render columns in board
   const renderColumn = (colId: ColumnKey) => (
-    <Column key={colId} id={colId} title={COLUMN_CONFIG[colId].label} count={byCol[colId].length}>
+    <Column
+      key={colId}
+      id={colId}
+      title={COLUMN_CONFIG[colId].label}
+      count={byCol[colId].length}
+      selectState={laneSelectState(colId)}
+      onToggleSelectAll={toggleSelectLane}
+    >
       <SortableContext id={colId} items={byCol[colId].map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <AnimatePresence mode="popLayout">
           {byCol[colId].map((t) => (
             <TaskCard
               key={t.id}
               task={t}
+              selected={selectedIds.has(t.id)}
+              onToggleSelect={toggleSelect}
               onUpdate={(p) => updateTask(t.id, p)}
               onMove={(to) => moveTask(t.id, to)}
               onGenerateSubtasks={generateSubtasksFor}
               onSelect={() => { setSelectedTaskId(t.id); setTaskDialogOpen(true); }}
+              onDelete={(id) => { if (confirm("Delete this task?")) removeTask(id); }}
             />
           ))}
         </AnimatePresence>
@@ -752,6 +919,64 @@ export default function FocusStudioStarter() {
         {!focusMode && (
           <div className="flex items-center justify-between">
             <ViewToggle view={viewMode} onViewChange={setViewMode} />
+          </div>
+        )}
+
+        {/* ===== Bulk selection / duplicate-cleanup bar ===== */}
+        {!focusMode && viewMode === "board" && (selectedCount > 0 || duplicateIds.length > 0) && (
+          <div className="flex items-center gap-2 flex-wrap rounded-xl border border-border bg-card px-3 py-2 shadow-sm">
+            {selectedCount > 0 ? (
+              <>
+                <span className="text-sm font-medium text-foreground">
+                  {selectedCount} selected
+                </span>
+                <div className="h-4 w-px bg-border" />
+                <Select onValueChange={(v) => bulkMove(v as ColumnKey)}>
+                  <SelectTrigger className="h-8 w-[130px] text-xs">
+                    <SelectValue placeholder="Move to…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="now">Now</SelectItem>
+                    <SelectItem value="next">Next</SelectItem>
+                    <SelectItem value="later">Later</SelectItem>
+                    <SelectItem value="backlog">Backlog</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="secondary" className="h-8 text-xs" onClick={bulkMarkDone}>
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Mark done
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                  onClick={bulkDelete}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />Delete
+                </Button>
+                {duplicateIds.length > 0 && (
+                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={selectDuplicates} title="Select redundant copies, keeping the earliest of each">
+                    <Copy className="h-3.5 w-3.5 mr-1" />Select {duplicateIds.length} duplicate{duplicateIds.length === 1 ? "" : "s"}
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="h-8 text-xs ml-auto" onClick={clearSelection}>
+                  <X className="h-3.5 w-3.5 mr-1" />Clear
+                </Button>
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4 text-amber-500 shrink-0" />
+                <span className="text-sm text-foreground">
+                  {duplicateIds.length} redundant task{duplicateIds.length === 1 ? "" : "s"} detected
+                </span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  (same title repeated in a lane)
+                </span>
+                <Button size="sm" variant="secondary" className="h-8 text-xs ml-auto" onClick={selectDuplicates}>
+                  Select duplicates
+                </Button>
+              </>
+            )}
           </div>
         )}
 

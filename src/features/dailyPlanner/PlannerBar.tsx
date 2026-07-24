@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, Send, Sparkles, Sun, X, Trash2, Loader2, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, newUuid } from "@/lib/utils";
 import { useTasks } from "@/lib/taskContext";
 import type { ColumnKey, Priority, Task } from "@/FocusStudioStarter";
 import { useVoiceRecorder } from "./useVoiceRecorder";
@@ -17,7 +17,11 @@ const GUIDED_QUESTIONS = [
   "Anything else to capture? (or say 'done' to finish)",
 ];
 
-const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+// task.id maps to a Postgres `uuid` column — a non-UUID id triggers a silent
+// 22P02 on persist, which drops the task into the localStorage fallback and
+// causes the rescue path to re-insert a fresh copy on every reload (duplicates).
+// Always mint a real UUID here, same as the rest of the app.
+const uid = () => newUuid();
 
 const COLUMN_LABEL: Record<ColumnKey, string> = {
   now: "Now",
@@ -44,6 +48,7 @@ export default function PlannerBar() {
   const [extracted, setExtracted] = useState<ExtractedTask[] | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const committingRef = useRef(false);
   const voice = useVoiceRecorder();
 
   const userTurns = useMemo(
@@ -176,6 +181,10 @@ export default function PlannerBar() {
 
   const commitExtracted = () => {
     if (!extracted || extracted.length === 0) return;
+    // Guard against a fast double-click adding the same batch twice before the
+    // `setExtracted(null)` below has flushed.
+    if (committingRef.current) return;
+    committingRef.current = true;
     const nowIso = new Date().toISOString();
     const today = new Date().toISOString().slice(0, 10);
     const newTasks: Task[] = extracted.map((e) => ({
@@ -197,6 +206,7 @@ export default function PlannerBar() {
     setExtracted(null);
     setMode("idle");
     setGuidedStep(0);
+    committingRef.current = false;
   };
 
   const placeholder = voice.recording
