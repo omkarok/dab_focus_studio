@@ -13,7 +13,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { supabase, db } from "@/lib/supabase";
+import { supabase, db, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/lib/authContext";
 import type {
   Workspace,
@@ -27,6 +27,30 @@ import type {
 
 const ACTIVE_WORKSPACE_KEY = "acs_active_workspace_v1";
 const ACTIVE_TEAM_KEY = "acs_active_team_v1";
+
+// When Supabase isn't configured the app runs in single-user, localStorage-only
+// mode. There is no backend to load workspaces/teams from, so we synthesize a
+// local workspace + team. Without this `currentWorkspace` stays null and the
+// app shell blocks every view with "No workspace selected".
+const OFFLINE = !isSupabaseConfigured();
+
+const LOCAL_WORKSPACE: Workspace = {
+  id: "local",
+  name: "Local Workspace",
+  slug: "local",
+  createdBy: "local",
+  createdAt: new Date(0).toISOString(),
+};
+
+const LOCAL_TEAM: Team = {
+  id: "local-team",
+  workspaceId: LOCAL_WORKSPACE.id,
+  name: "My Team",
+  description: undefined,
+  color: undefined,
+  createdBy: undefined,
+  createdAt: new Date(0).toISOString(),
+};
 
 // ---- DB row mappings ----
 
@@ -134,11 +158,15 @@ const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(undefi
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
-  const [loading, setLoading] = useState(true);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!OFFLINE);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(OFFLINE ? [LOCAL_WORKSPACE] : []);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(
+    OFFLINE ? LOCAL_WORKSPACE.id : null,
+  );
+  const [teams, setTeams] = useState<Team[]>(OFFLINE ? [LOCAL_TEAM] : []);
+  const [currentTeamId, setCurrentTeamId] = useState<string | null>(
+    OFFLINE ? LOCAL_TEAM.id : null,
+  );
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
@@ -146,6 +174,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // Hydrate persisted selections
   useEffect(() => {
+    if (OFFLINE) return; // offline uses the fixed local workspace/team
     try {
       const w = localStorage.getItem(ACTIVE_WORKSPACE_KEY);
       const t = localStorage.getItem(ACTIVE_TEAM_KEY);
@@ -157,6 +186,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (OFFLINE) return;
     if (currentWorkspaceId) {
       try {
         localStorage.setItem(ACTIVE_WORKSPACE_KEY, JSON.stringify(currentWorkspaceId));
@@ -167,6 +197,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [currentWorkspaceId]);
 
   useEffect(() => {
+    if (OFFLINE) return;
     if (currentTeamId) {
       try {
         localStorage.setItem(ACTIVE_TEAM_KEY, JSON.stringify(currentTeamId));
@@ -280,6 +311,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // Load workspace-scoped data when current workspace changes
   useEffect(() => {
+    if (OFFLINE) return; // no backend to load teams/members/profiles from
     if (!currentWorkspaceId) {
       setTeams([]);
       setMembers([]);

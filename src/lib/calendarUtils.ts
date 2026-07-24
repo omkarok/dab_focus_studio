@@ -1,6 +1,23 @@
 import type { Task } from "@/FocusStudioStarter";
 
 /**
+ * Parse a task due value into a LOCAL-time Date at midnight.
+ *
+ * Due values are stored as calendar dates. A bare "YYYY-MM-DD" (and the
+ * date portion of any ISO string) is interpreted in the user's local
+ * timezone — `new Date("2026-07-24")` would otherwise parse as UTC
+ * midnight and render on the previous day for users west of UTC, dropping
+ * tasks into the wrong calendar cell.
+ */
+export function parseDueDate(due: string): Date {
+  const datePart = due.slice(0, 10);
+  const [y, m, d] = datePart.split("-").map(Number);
+  if (y && m && d) return new Date(y, m - 1, d);
+  // Fallback for unexpected formats — better than throwing.
+  return new Date(due);
+}
+
+/**
  * Returns an array of 7 dates (Mon–Sun) for the week containing the given reference date.
  */
 export function getWeekDays(referenceDate: Date): Date[] {
@@ -88,7 +105,7 @@ export function groupTasksByDate(
       continue;
     }
 
-    const taskDate = new Date(task.due);
+    const taskDate = parseDueDate(task.due);
     const key = toDateKey(taskDate);
     const bucket = map.get(key);
     if (bucket) {
@@ -115,7 +132,7 @@ export function groupTasksByDate(
 export function getOverdueTasks(tasks: Task[]): Task[] {
   return tasks.filter((t) => {
     if (!t.due || t.completed) return false;
-    return isPast(new Date(t.due));
+    return isPast(parseDueDate(t.due));
   });
 }
 

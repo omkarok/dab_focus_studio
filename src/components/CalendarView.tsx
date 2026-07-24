@@ -17,6 +17,7 @@ import {
   formatDayHeader,
   groupTasksByDate,
   toDateKey,
+  parseDueDate,
 } from "@/lib/calendarUtils";
 
 export interface CalendarViewProps {
@@ -110,7 +111,7 @@ export default function CalendarView({
   const overdueSet = useMemo(() => {
     const set = new Set<string>();
     for (const task of tasks) {
-      if (task.due && !task.completed && isPast(new Date(task.due))) {
+      if (task.due && !task.completed && isPast(parseDueDate(task.due))) {
         set.add(task.id);
       }
     }

@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/authContext";
 import { useWorkspace } from "@/lib/workspaceContext";
 import { useProjects } from "@/lib/projectContext";
 import type { Task, ColumnKey } from "@/FocusStudioStarter";
+import { parseDueDate } from "@/lib/calendarUtils";
 import {
   Users,
   Search,
@@ -611,7 +612,7 @@ export function TeamTaskView({ onOpenTask }: TeamTaskViewProps) {
                           <span>·</span>
                           <span className="inline-flex items-center gap-0.5">
                             <Clock className="h-2.5 w-2.5" />
-                            {new Date(t.due).toLocaleDateString()}
+                            {parseDueDate(t.due).toLocaleDateString()}
                           </span>
                         </>
                       )}
