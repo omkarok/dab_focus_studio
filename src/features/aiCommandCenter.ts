@@ -23,6 +23,12 @@ const MODEL =
     (globalThis as any)?.process?.env?.VITE_OPENAI_MODEL ??
     "gpt-4.1-mini") as string;
 
+/** Whether an OpenAI API key is configured — lets the UI explain why AI
+ * features are unavailable instead of silently doing nothing. */
+export function hasOpenAiKey(): boolean {
+  return Boolean(API_KEY);
+}
+
 export async function generateSubtasks(task: TaskLike): Promise<string[]> {
   if (!API_KEY) {
     console.warn("VITE_OPENAI_API_KEY not set; returning no subtasks.");

@@ -24,7 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { sortByPriority } from "@/features/enhancedTaskManagement";
 import { computeStats } from "@/features/analyticsReporting";
-import { generateSubtasks } from "@/features/aiCommandCenter";
+import { generateSubtasks, hasOpenAiKey } from "@/features/aiCommandCenter";
 import {
   DndContext,
   DragEndEvent,
@@ -73,6 +73,7 @@ import TimeReport from "@/components/TimeReport";
 import { AssigneePicker } from "@/components/AssigneePicker";
 import { useWorkspace } from "@/lib/workspaceContext";
 import { newUuid as uid } from "@/lib/utils";
+import { parseDueDate } from "@/lib/calendarUtils";
 
 // ------------------------------------------------------------
 // AI Consulting Studio: Local task & project manager
@@ -280,7 +281,7 @@ function TaskCard({ task, onUpdate, onMove, onGenerateSubtasks, onSelect }: {
                 ))}
                 {task.due ? (
                   <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    <Calendar className="h-2.5 w-2.5" />{new Date(task.due).toLocaleDateString()}
+                    <Calendar className="h-2.5 w-2.5" />{parseDueDate(task.due).toLocaleDateString()}
                   </span>
                 ) : null}
               </div>
@@ -371,6 +372,7 @@ export default function FocusStudioStarter() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [subtaskLoading, setSubtaskLoading] = useState(false);
+  const [subtaskMsg, setSubtaskMsg] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [timeReportOpen, setTimeReportOpen] = useState(false);
 
@@ -411,6 +413,7 @@ export default function FocusStudioStarter() {
   // Sync edit fields when selected task changes
   const selectedTask = useMemo(() => tasks.find((t) => t.id === selectedTaskId) || null, [tasks, selectedTaskId]);
   useEffect(() => {
+    setSubtaskMsg(null);
     if (selectedTask) {
       setEditTitle(selectedTask.title);
       setEditPriority(selectedTask.priority);
@@ -456,7 +459,13 @@ export default function FocusStudioStarter() {
 
   const generateSubtasksFor = async (task: Task) => {
     setSubtaskLoading(true);
-    const subs = await generateSubtasks({ title: task.title, notes: task.notes });
+    setSubtaskMsg(null);
+    let subs: string[] = [];
+    try {
+      subs = await generateSubtasks({ title: task.title, notes: task.notes });
+    } catch {
+      subs = [];
+    }
     setSubtaskLoading(false);
     if (subs.length) {
       const newTasks = subs.map((title) => ({
@@ -468,6 +477,15 @@ export default function FocusStudioStarter() {
         completed: false,
       }));
       setTasks((prev) => [...prev, ...newTasks]);
+      setSubtaskMsg(
+        `Added ${newTasks.length} subtask${newTasks.length === 1 ? "" : "s"} to ${COLUMN_CONFIG[task.status].label}.`,
+      );
+    } else {
+      setSubtaskMsg(
+        hasOpenAiKey()
+          ? "The AI didn't return any subtasks. Try a more descriptive task title."
+          : "AI subtasks need an OpenAI API key. Set VITE_OPENAI_API_KEY to enable this feature.",
+      );
     }
   };
 
@@ -803,6 +821,11 @@ export default function FocusStudioStarter() {
                             <Sparkles className="h-3.5 w-3.5 mr-1" />{subtaskLoading ? "Generating..." : "AI Subtasks"}
                           </Button>
                         </div>
+                        {subtaskMsg && (
+                          <div className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-lg px-3 py-2">
+                            {subtaskMsg}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-8">
@@ -923,8 +946,8 @@ export default function FocusStudioStarter() {
                     <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Due Date</label>
                     <Input
                       type="date"
-                      value={editDue ? editDue.split("T")[0] : ""}
-                      onChange={(e) => setEditDue(e.target.value ? new Date(e.target.value).toISOString() : "")}
+                      value={editDue ? editDue.slice(0, 10) : ""}
+                      onChange={(e) => setEditDue(e.target.value)}
                       className="h-9 text-xs"
                     />
                   </div>
@@ -1004,6 +1027,12 @@ export default function FocusStudioStarter() {
                     </Button>
                   </div>
                 </div>
+
+                {subtaskMsg && (
+                  <div className="text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg px-3 py-2">
+                    {subtaskMsg}
+                  </div>
+                )}
               </div>
             )}
           </DialogContent>
