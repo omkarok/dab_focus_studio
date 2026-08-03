@@ -65,6 +65,7 @@ import {
   MinusSquare,
   Copy,
   X,
+  CalendarSync,
 } from "lucide-react";
 import { useTasks } from "@/lib/taskContext";
 import { useTemplates, DEFAULT_COLUMNS } from "@/lib/templateContext";
@@ -72,6 +73,7 @@ import { useProjects } from "@/lib/projectContext";
 import { useTimeTracking } from "@/lib/timeContext";
 import ProjectSwitcher from "@/components/ProjectSwitcher";
 import CalendarView from "@/components/CalendarView";
+import NotionSyncDialog from "@/components/NotionSyncDialog";
 import ViewToggle from "@/components/ViewToggle";
 import TimeTracker from "@/components/TimeTracker";
 import TimeReport from "@/components/TimeReport";
@@ -458,6 +460,7 @@ export default function FocusStudioStarter() {
   const [subtaskMsg, setSubtaskMsg] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [timeReportOpen, setTimeReportOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   // Editable fields for the task detail dialog
   const [editTitle, setEditTitle] = useState("");
@@ -772,12 +775,12 @@ export default function FocusStudioStarter() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="ghost" size="sm" className="h-8 px-2" onClick={exportTemplate}>
+              <Button variant="ghost" size="sm" className="h-8 px-2" onClick={exportTemplate} title="Export current tasks as a template">
                 <Download className="h-3.5 w-3.5" />
               </Button>
               <Dialog open={templateOpen} onOpenChange={setTemplateOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                  <Button variant="ghost" size="sm" className="h-8 px-2" title="Import a template from JSON">
                     <Upload className="h-3.5 w-3.5" />
                   </Button>
                 </DialogTrigger>
@@ -792,6 +795,20 @@ export default function FocusStudioStarter() {
                 </DialogContent>
               </Dialog>
             </div>
+
+            <div className="h-5 w-px bg-border hidden sm:block" />
+
+            {/* Notion Calendar sync + task import/export */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 text-xs gap-1.5"
+              onClick={() => setSyncOpen(true)}
+              title="Notion Calendar sync & task import/export"
+            >
+              <CalendarSync className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Sync</span>
+            </Button>
 
             {/* Right side controls */}
             <div className="ml-auto flex items-center gap-2">
@@ -1302,6 +1319,15 @@ export default function FocusStudioStarter() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* ===== Notion Calendar Sync & Import/Export Dialog ===== */}
+        <NotionSyncDialog
+          open={syncOpen}
+          onOpenChange={setSyncOpen}
+          tasks={tasks}
+          projectName={activeProject.name}
+          onImport={(next) => setTasks(next)}
+        />
       </main>
 
       {/* ===== Footer ===== */}

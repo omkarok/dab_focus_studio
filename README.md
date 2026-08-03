@@ -35,6 +35,23 @@ Optionally set `VITE_OPENAI_API_KEY` (and `VITE_OPENAI_MODEL`, default `gpt-4.1-
 - LocalStorage persistence (Supabase-backed when configured)
 - MIT License
 
+### Notion Calendar sync & task import/export
+The **Sync** button in the board toolbar opens a hub for moving tasks in and
+out of the studio:
+
+- **Notion Calendar** — export every task with a due date as a standard
+  iCalendar (`.ics`) file. Import it into Google Calendar (or subscribe to it)
+  and it appears in [Notion Calendar](https://calendar.notion.so), which reads
+  your Google calendars. Priority, status, tags, estimate, and notes travel
+  along as event metadata. (Notion's REST API blocks direct browser writes via
+  CORS, so the `.ics`/CSV route is the reliable, zero-setup path.)
+- **Notion CSV** — export a Notion-friendly table you can import straight into
+  a Notion database, then flip to a Calendar view on the Due date.
+- **Import / Export** — round-trip the board as JSON (full fidelity) or CSV,
+  or import pasted/uploaded JSON or CSV. Notion database CSV exports are
+  auto-detected (tolerant column and status/priority mapping), with
+  **Merge** (skip duplicates) or **Replace** modes.
+
 ## Data & Privacy
 
 All task data is stored locally in your browser by default. Future

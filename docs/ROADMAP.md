@@ -24,6 +24,8 @@ This roadmap tracks major features proposed for the project. Each section lists 
 ## Enhanced Task Management
 - [ ] Enable drag-and-drop between columns and reorder within columns.
 - [ ] Add recurring tasks, reminders, and calendar integrations.
+  - [x] Notion Calendar sync via iCalendar (`.ics`) export + Notion-CSV export.
+  - [x] Task import/export (JSON, CSV) with Notion-CSV auto-detection and merge/replace.
 
 ## Analytics & Reporting
 - [ ] Track time spent per task/priority and visualize weekly progress.
